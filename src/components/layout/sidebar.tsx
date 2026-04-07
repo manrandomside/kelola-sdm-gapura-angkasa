@@ -137,14 +137,20 @@ function isLeafActive(href: string, pathname: string): boolean {
 // ---------------------------------------------------------------------------
 
 interface SidebarProps {
-  // For now this is hardcoded by AppShell to 'super_admin'. Once auth is
-  // wired up (Task 6), AppShell will pass the live session role here.
   role: UserRole;
   userName: string;
+  onLogout?: () => void;
+  isLoggingOut?: boolean;
   onNavigate?: () => void;
 }
 
-export function Sidebar({ role, userName, onNavigate }: SidebarProps) {
+export function Sidebar({
+  role,
+  userName,
+  onLogout,
+  isLoggingOut = false,
+  onNavigate,
+}: SidebarProps) {
   const pathname = usePathname();
   const closeMobile = useSidebarStore((s) => s.close);
 
@@ -255,10 +261,12 @@ export function Sidebar({ role, userName, onNavigate }: SidebarProps) {
         </div>
         <button
           type="button"
-          className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+          onClick={onLogout}
+          disabled={isLoggingOut}
+          className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
         >
           <LogOut className="h-4 w-4" aria-hidden="true" />
-          Keluar
+          {isLoggingOut ? "Keluar..." : "Keluar"}
         </button>
       </div>
     </aside>

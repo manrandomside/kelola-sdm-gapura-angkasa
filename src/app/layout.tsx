@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Figtree } from "next/font/google";
 import "./globals.css";
 
+import { QueryProvider } from "@/components/providers/query-provider";
+
 const figtree = Figtree({
   variable: "--font-sans",
   subsets: ["latin"],
@@ -21,7 +23,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="id" className={`${figtree.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col font-sans">{children}</body>
+      <body className="min-h-full flex flex-col font-sans">
+        <QueryProvider>{children}</QueryProvider>
+      </body>
     </html>
   );
 }

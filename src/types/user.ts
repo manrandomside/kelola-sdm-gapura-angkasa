@@ -33,3 +33,14 @@ export interface UpdateUserInput {
   role?: UserRole;
   status?: UserStatus;
 }
+
+// Slim user shape returned by /api/auth/session and /api/auth/login.
+// Tidak include field internal seperti supabase_auth_id atau timestamp.
+export interface SessionUser {
+  id: string;
+  nip: string;
+  full_name: string;
+  role: UserRole;
+  email: string | null;
+  status: UserStatus;
+}

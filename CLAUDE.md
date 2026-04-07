@@ -355,10 +355,10 @@ src/
 - [x] Drizzle schema: activity_log, import_log, app_setting
 - [x] Drizzle migrations executed
 - [x] Next.js project initialized + Tailwind 4 + shadcn/ui
-- [ ] AppShell layout (Sidebar + TopBar)
-- [ ] Auth: login page (NIP + password)
-- [ ] Auth: session check + role-based redirect
-- [ ] Auth: logout
+- [x] AppShell layout (Sidebar + TopBar)
+- [x] Auth: login page (NIP + password)
+- [x] Auth: session check + role-based redirect
+- [x] Auth: logout
 - [x] Seed: unit + sub_unit data
 - [x] Seed: organization data
 - [x] Seed: initial super_admin account
