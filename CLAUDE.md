@@ -367,9 +367,9 @@ src/
 - [x] Employee list page (DataTable + pagination)
 - [x] Server-side search (nama/NIP/NIK)
 - [x] Multi-filter (status_pegawai, status_kontrak, unit_organisasi, provider, status_kerja)
-- [ ] Employee create form (4 tab sections)
-- [ ] Cascading dropdown (unit_organisasi -> unit -> sub_unit)
-- [ ] NIP uniqueness check (realtime)
+- [x] Employee create form (4 tab sections)
+- [x] Cascading dropdown (unit_organisasi -> unit -> sub_unit)
+- [x] NIP uniqueness check (realtime)
 - [ ] Employee detail page (Show)
 - [ ] Employee edit page
 - [ ] Employee delete + confirmation dialog

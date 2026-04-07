@@ -2,9 +2,10 @@ import { NextResponse } from "next/server";
 import { and, asc, count, desc, eq, ilike, or, sql, type SQL } from "drizzle-orm";
 
 import { db } from "@/lib/db";
-import { employee } from "@/lib/db/schema";
+import { activityLog, employee, user } from "@/lib/db/schema";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/utils/logger";
+import { createEmployeeSchema } from "@/lib/validations/employee";
 
 import type { ApiResponse } from "@/types/api";
 
@@ -196,5 +197,193 @@ export async function GET(request: Request) {
   } catch (err) {
     logger.error("Failed to fetch employees", err);
     return fail(500, "INTERNAL_ERROR", "Gagal mengambil data karyawan");
+  }
+}
+
+interface CreatedEmployeeResponse {
+  employee: {
+    id: number;
+    nip: string;
+    nama_lengkap: string;
+  };
+}
+
+export async function POST(
+  request: Request,
+): Promise<NextResponse<ApiResponse<CreatedEmployeeResponse>>> {
+  // Auth: hanya admin / super_admin yang boleh menambah karyawan.
+  const supabase = await createClient();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+
+  if (!authUser) {
+    return fail(401, "UNAUTHORIZED", "Sesi tidak valid");
+  }
+
+  const appUserRows = await db
+    .select({
+      id: user.id,
+      full_name: user.full_name,
+      email: user.email,
+      role: user.role,
+    })
+    .from(user)
+    .where(eq(user.supabase_auth_id, authUser.id))
+    .limit(1);
+
+  const appUser = appUserRows[0];
+  if (!appUser) {
+    return fail(403, "FORBIDDEN", "Akun tidak terdaftar");
+  }
+  if (appUser.role !== "admin" && appUser.role !== "super_admin") {
+    return fail(403, "FORBIDDEN", "Anda tidak memiliki akses untuk menambah karyawan");
+  }
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return fail(400, "INVALID_BODY", "Body request tidak valid");
+  }
+
+  const parsed = createEmployeeSchema.safeParse(body);
+  if (!parsed.success) {
+    const first = parsed.error.issues[0];
+    return NextResponse.json<ApiResponse<never>>(
+      {
+        success: false,
+        error: {
+          code: "VALIDATION_ERROR",
+          message: first?.message ?? "Data tidak valid",
+          details: { issues: parsed.error.issues },
+        },
+      },
+      { status: 400 },
+    );
+  }
+
+  const data = parsed.data;
+
+  try {
+    // Cek NIP unik.
+    const existingNip = await db
+      .select({ id: employee.id })
+      .from(employee)
+      .where(eq(employee.nip, data.nip))
+      .limit(1);
+    if (existingNip.length > 0) {
+      return fail(409, "NIP_TAKEN", "NIP sudah terdaftar");
+    }
+
+    // Cek NIK unik (jika diisi).
+    if (data.nik) {
+      const existingNik = await db
+        .select({ id: employee.id })
+        .from(employee)
+        .where(eq(employee.nik, data.nik))
+        .limit(1);
+      if (existingNik.length > 0) {
+        return fail(409, "NIK_TAKEN", "NIK sudah terdaftar");
+      }
+    }
+
+    // Cek email unik (jika diisi).
+    if (data.email) {
+      const existingEmail = await db
+        .select({ id: employee.id })
+        .from(employee)
+        .where(eq(employee.email, data.email))
+        .limit(1);
+      if (existingEmail.length > 0) {
+        return fail(409, "EMAIL_TAKEN", "Email sudah terdaftar");
+      }
+    }
+
+    const inserted = await db
+      .insert(employee)
+      .values({
+        nip: data.nip,
+        nik: data.nik,
+        nama_lengkap: data.nama_lengkap,
+        jenis_kelamin: data.jenis_kelamin,
+        tempat_lahir: data.tempat_lahir,
+        tanggal_lahir: data.tanggal_lahir,
+        alamat: data.alamat,
+        kota_domisili: data.kota_domisili,
+        handphone: data.handphone,
+        email: data.email,
+        status_pegawai: data.status_pegawai,
+        status_kontrak: data.status_kontrak,
+        status_kerja: data.status_kerja,
+        provider: data.provider,
+        kode_organisasi: data.kode_organisasi,
+        unit_organisasi: data.unit_organisasi,
+        nama_organisasi: data.nama_organisasi,
+        sub_unit_organisasi: data.sub_unit_organisasi,
+        unit_id: data.unit_id,
+        sub_unit_id: data.sub_unit_id,
+        nama_jabatan: data.nama_jabatan,
+        jabatan: data.jabatan,
+        kelompok_jabatan: data.kelompok_jabatan,
+        kelas_jabatan: data.kelas_jabatan,
+        unit_kerja_kontrak: data.unit_kerja_kontrak,
+        grade: data.grade,
+        kategori_karyawan: data.kategori_karyawan,
+        tmt_mulai_kerja: data.tmt_mulai_kerja,
+        tmt_berakhir_kerja: data.tmt_berakhir_kerja,
+        tmt_mulai_jabatan: data.tmt_mulai_jabatan,
+        tmt_akhir_jabatan: data.tmt_akhir_jabatan,
+        tmt_berakhir_jabatan: data.tmt_berakhir_jabatan,
+        tmt_pensiun: data.tmt_pensiun,
+        pendidikan: data.pendidikan,
+        pendidikan_terakhir: data.pendidikan_terakhir,
+        instansi_pendidikan: data.instansi_pendidikan,
+        jurusan: data.jurusan,
+        remarks_pendidikan: data.remarks_pendidikan,
+        tahun_lulus: data.tahun_lulus,
+        no_bpjs_kesehatan: data.no_bpjs_kesehatan,
+        no_bpjs_ketenagakerjaan: data.no_bpjs_ketenagakerjaan,
+        height: data.height,
+        weight: data.weight,
+        jenis_sepatu: data.jenis_sepatu,
+        ukuran_sepatu: data.ukuran_sepatu,
+        seragam: data.seragam,
+      })
+      .returning({
+        id: employee.id,
+        nip: employee.nip,
+        nama_lengkap: employee.nama_lengkap,
+      });
+
+    const created = inserted[0];
+    if (!created) {
+      return fail(500, "INTERNAL_ERROR", "Gagal menambah karyawan");
+    }
+
+    // Activity log — non-fatal jika gagal.
+    try {
+      await db.insert(activityLog).values({
+        user_id: appUser.id,
+        user_email: appUser.email,
+        user_name: appUser.full_name,
+        activity: "create_employee",
+        description: `${appUser.full_name} menambah karyawan ${created.nama_lengkap} (${created.nip})`,
+        target_type: "employee",
+        target_label: created.nama_lengkap,
+        ip_address: request.headers.get("x-forwarded-for") ?? null,
+        user_agent: request.headers.get("user-agent") ?? null,
+      });
+    } catch (err) {
+      logger.error("Failed to log create_employee activity", err);
+    }
+
+    return NextResponse.json<ApiResponse<CreatedEmployeeResponse>>({
+      success: true,
+      data: { employee: created },
+    });
+  } catch (err) {
+    logger.error("Failed to create employee", err);
+    return fail(500, "INTERNAL_ERROR", "Gagal menambah karyawan");
   }
 }
