@@ -26,7 +26,9 @@
       "Bash(git commit:*)",
       "Bash(git branch:*)",
       "Bash(git push:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(npx drizzle-kit:*)",
+      "Bash(node:*)"
     ]
   }
 }
