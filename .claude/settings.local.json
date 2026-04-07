@@ -13,7 +13,16 @@
       "Bash(npx --yes shadcn@latest init --help)",
       "Bash(npx --yes shadcn@latest init --yes --force --template next)",
       "Bash(npx --yes shadcn@latest init --yes --force --template next -b radix)",
-      "Bash(npx --yes shadcn@latest init --yes --force -d)"
+      "Bash(npx --yes shadcn@latest init --yes --force -d)",
+      "Bash(npx --yes shadcn@latest add button input dialog table dropdown-menu select toast badge card tabs sheet separator skeleton tooltip avatar label form popover calendar command checkbox radio-group textarea scroll-area alert-dialog sonner --yes --overwrite)",
+      "Bash(npx --yes shadcn@latest add button input dialog table dropdown-menu select badge card tabs sheet separator skeleton tooltip avatar label form popover calendar command checkbox radio-group textarea scroll-area alert-dialog sonner --yes --overwrite)",
+      "Bash(npx --yes shadcn@latest add form --yes)",
+      "Bash(npx --yes shadcn@latest add form --yes --overwrite)",
+      "Bash(npm run:*)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000)",
+      "Bash(npx tsc:*)",
+      "Bash(git remote:*)",
+      "Bash(git add:*)"
     ]
   }
 }
