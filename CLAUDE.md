@@ -364,9 +364,9 @@ src/
 - [x] Seed: initial super_admin account
 
 ### Phase 2: Core CRUD
-- [ ] Employee list page (DataTable + pagination)
-- [ ] Server-side search (nama/NIP/NIK)
-- [ ] Multi-filter (status_pegawai, status_kontrak, unit_organisasi, provider, status_kerja)
+- [x] Employee list page (DataTable + pagination)
+- [x] Server-side search (nama/NIP/NIK)
+- [x] Multi-filter (status_pegawai, status_kontrak, unit_organisasi, provider, status_kerja)
 - [ ] Employee create form (4 tab sections)
 - [ ] Cascading dropdown (unit_organisasi -> unit -> sub_unit)
 - [ ] NIP uniqueness check (realtime)
