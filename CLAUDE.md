@@ -348,20 +348,20 @@ src/
 ## Status Progress
 
 ### Phase 1: Foundation
-- [ ] Supabase project created + env configured
-- [ ] Drizzle schema: user table
-- [ ] Drizzle schema: employee table (45+ fields)
-- [ ] Drizzle schema: organization, unit, sub_unit
-- [ ] Drizzle schema: activity_log, import_log, app_setting
-- [ ] Drizzle migrations executed
-- [ ] Next.js project initialized + Tailwind 4 + shadcn/ui
+- [x] Supabase project created + env configured
+- [x] Drizzle schema: user table
+- [x] Drizzle schema: employee table (45+ fields)
+- [x] Drizzle schema: organization, unit, sub_unit
+- [x] Drizzle schema: activity_log, import_log, app_setting
+- [x] Drizzle migrations executed
+- [x] Next.js project initialized + Tailwind 4 + shadcn/ui
 - [ ] AppShell layout (Sidebar + TopBar)
 - [ ] Auth: login page (NIP + password)
 - [ ] Auth: session check + role-based redirect
 - [ ] Auth: logout
-- [ ] Seed: unit + sub_unit data
-- [ ] Seed: organization data
-- [ ] Seed: initial super_admin account
+- [x] Seed: unit + sub_unit data
+- [x] Seed: organization data
+- [x] Seed: initial super_admin account
 
 ### Phase 2: Core CRUD
 - [ ] Employee list page (DataTable + pagination)
