@@ -110,9 +110,12 @@ export default function EmployeesPage() {
       {/* Page header */}
       <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <div className="space-y-1">
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-foreground sm:text-3xl">
+          <h1 className="flex flex-wrap items-center gap-2 text-2xl font-bold text-foreground sm:text-3xl">
             <Users className="size-7 text-primary" />
-            Daftar Karyawan
+            Management Karyawan
+            <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary sm:text-sm">
+              {statistics.total.toLocaleString("id-ID")} karyawan
+            </span>
           </h1>
           <p className="text-sm text-muted-foreground">
             Kelola data karyawan PT Gapura Angkasa.
