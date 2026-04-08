@@ -390,11 +390,11 @@ src/
 - [x] Export: styled header (green #439454, white text)
 
 ### Phase 4: Dashboard & Supporting
-- [ ] Dashboard: statistics cards (total, breakdown by status_kontrak)
-- [ ] Dashboard: donut chart (status kontrak)
-- [ ] Dashboard: bar chart (unit organisasi)
-- [ ] Dashboard: bar chart (provider)
-- [ ] Dashboard: recent activities
+- [x] Dashboard: statistics cards (total, breakdown by status_kontrak)
+- [x] Dashboard: donut chart (status kontrak)
+- [x] Dashboard: bar chart (unit organisasi)
+- [x] Dashboard: bar chart (provider)
+- [x] Dashboard: recent activities
 - [ ] Activity log page (list + filter + pagination)
 - [ ] User management: list users
 - [ ] User management: create user
