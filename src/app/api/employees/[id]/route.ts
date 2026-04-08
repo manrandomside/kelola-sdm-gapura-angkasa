@@ -121,7 +121,7 @@ export async function GET(
       .limit(1);
 
     const row = rows[0];
-    if (!row) {
+    if (!row || row.status !== "active") {
       return fail(404, "NOT_FOUND", "Data karyawan tidak ditemukan");
     }
 
@@ -456,5 +456,112 @@ export async function PUT(
   } catch (err) {
     logger.error("Failed to update employee", err);
     return fail(500, "INTERNAL_ERROR", "Gagal mengubah karyawan");
+  }
+}
+
+interface DeleteEmployeeResponse {
+  message: string;
+}
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+): Promise<NextResponse<ApiResponse<DeleteEmployeeResponse>>> {
+  const supabase = await createClient();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+
+  if (!authUser) {
+    return fail(401, "UNAUTHORIZED", "Sesi tidak valid");
+  }
+
+  const appUserRows = await db
+    .select({
+      id: user.id,
+      full_name: user.full_name,
+      email: user.email,
+      role: user.role,
+    })
+    .from(user)
+    .where(eq(user.supabase_auth_id, authUser.id))
+    .limit(1);
+
+  const appUser = appUserRows[0];
+  if (!appUser) {
+    return fail(403, "FORBIDDEN", "Akun tidak terdaftar");
+  }
+  if (appUser.role !== "admin" && appUser.role !== "super_admin") {
+    return fail(
+      403,
+      "FORBIDDEN",
+      "Anda tidak memiliki akses untuk menghapus karyawan",
+    );
+  }
+
+  const { id: idParam } = await params;
+  const id = parseId(idParam);
+  if (!id) {
+    return fail(400, "INVALID_ID", "ID karyawan tidak valid");
+  }
+
+  try {
+    const existingRows = await db
+      .select({
+        id: employee.id,
+        nip: employee.nip,
+        nama_lengkap: employee.nama_lengkap,
+        status: employee.status,
+      })
+      .from(employee)
+      .where(eq(employee.id, id))
+      .limit(1);
+
+    const existing = existingRows[0];
+    if (!existing) {
+      return fail(404, "NOT_FOUND", "Data karyawan tidak ditemukan");
+    }
+
+    // Soft delete karyawan — jangan hard delete karena masih dibutuhkan
+    // untuk audit trail dan referensi history.
+    await db
+      .update(employee)
+      .set({ status: "inactive", updated_at: sql`NOW()` })
+      .where(eq(employee.id, id));
+
+    // Nonaktifkan akun user terkait (jika ada) agar tidak bisa login lagi.
+    await db
+      .update(user)
+      .set({ status: "inactive", updated_at: sql`NOW()` })
+      .where(eq(user.employee_id, id));
+
+    // Activity log — non-fatal.
+    try {
+      await db.insert(activityLog).values({
+        user_id: appUser.id,
+        user_email: appUser.email,
+        user_name: appUser.full_name,
+        activity: "delete_employee",
+        description: `${appUser.full_name} menghapus data karyawan ${existing.nama_lengkap} (${existing.nip})`,
+        target_type: "employee",
+        target_label: existing.nama_lengkap,
+        metadata: {
+          employee_nip: existing.nip,
+          employee_name: existing.nama_lengkap,
+        },
+        ip_address: request.headers.get("x-forwarded-for") ?? null,
+        user_agent: request.headers.get("user-agent") ?? null,
+      });
+    } catch (err) {
+      logger.error("Failed to log delete_employee activity", err);
+    }
+
+    return NextResponse.json<ApiResponse<DeleteEmployeeResponse>>({
+      success: true,
+      data: { message: "Data karyawan berhasil dihapus" },
+    });
+  } catch (err) {
+    logger.error("Failed to delete employee", err);
+    return fail(500, "INTERNAL_ERROR", "Gagal menghapus karyawan");
   }
 }

@@ -372,8 +372,8 @@ src/
 - [x] NIP uniqueness check (realtime)
 - [x] Employee detail page (Show)
 - [x] Employee edit page
-- [ ] Employee delete + confirmation dialog
-- [ ] Activity log: record CRUD operations
+- [x] Employee delete + confirmation dialog
+- [x] Activity log: record CRUD operations
 
 ### Phase 3: Import/Export
 - [ ] Import: download template .xlsx

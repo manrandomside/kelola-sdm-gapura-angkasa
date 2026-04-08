@@ -109,7 +109,8 @@ export async function GET(request: Request) {
   const order = searchParams.get("order") === "desc" ? "desc" : "asc";
 
   // Build WHERE conditions secara konsisten untuk list, count, dan statistik.
-  const conditions: SQL[] = [];
+  // Selalu kecualikan record soft-deleted (status = 'inactive').
+  const conditions: SQL[] = [eq(employee.status, "active")];
 
   if (search.length > 0) {
     const pattern = `%${search}%`;

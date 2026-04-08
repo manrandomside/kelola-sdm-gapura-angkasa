@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 import type { ApiResponse } from "@/types/api";
 import type { UpdateEmployeeInput } from "@/lib/validations/employee";
@@ -140,6 +141,41 @@ export function useUpdateEmployee(id: number | string) {
         queryKey: employeeDetailQueryKey(numericId),
       });
       queryClient.invalidateQueries({ queryKey: ["employees"] });
+    },
+  });
+}
+
+interface DeleteEmployeeResponse {
+  message: string;
+}
+
+async function deleteEmployeeRequest(id: number): Promise<string> {
+  const res = await fetch(`/api/employees/${id}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+
+  const json = (await res.json()) as ApiResponse<DeleteEmployeeResponse>;
+  if (!json.success) {
+    throw new Error(json.error.message);
+  }
+  return json.data.message;
+}
+
+export function useDeleteEmployee() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) => deleteEmployeeRequest(id),
+    onSuccess: (message, id) => {
+      queryClient.invalidateQueries({ queryKey: ["employees"] });
+      queryClient.removeQueries({ queryKey: employeeDetailQueryKey(id) });
+      toast.success(message || "Data karyawan berhasil dihapus");
+    },
+    onError: (error) => {
+      const message =
+        error instanceof Error ? error.message : "Gagal menghapus karyawan";
+      toast.error(message);
     },
   });
 }

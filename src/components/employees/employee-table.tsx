@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   ArrowDown,
   ArrowUp,
@@ -13,6 +14,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+import { DeleteEmployeeDialog } from "@/components/employees/delete-employee-dialog";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,6 +32,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useDeleteEmployee } from "@/hooks/use-employee-detail";
 import { ROUTES } from "@/lib/constants/routes";
 import { cn } from "@/lib/utils";
 
@@ -122,6 +125,29 @@ export function EmployeeTable({
   canEdit,
 }: EmployeeTableProps) {
   const router = useRouter();
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: number;
+    nama_lengkap: string;
+    nip: string;
+  } | null>(null);
+  const deleteMutation = useDeleteEmployee();
+
+  function handleDeleteClick(emp: EmployeeListItem) {
+    setDeleteTarget({
+      id: emp.id,
+      nama_lengkap: emp.nama_lengkap,
+      nip: emp.nip,
+    });
+  }
+
+  function handleDeleteConfirm() {
+    if (!deleteTarget) return;
+    deleteMutation.mutate(deleteTarget.id, {
+      onSuccess: () => {
+        setDeleteTarget(null);
+      },
+    });
+  }
 
   return (
     <div className="rounded-xl border border-border bg-card">
@@ -221,7 +247,10 @@ export function EmployeeTable({
                           </DropdownMenuItem>
                         )}
                         {canEdit && (
-                          <DropdownMenuItem variant="destructive" disabled>
+                          <DropdownMenuItem
+                            variant="destructive"
+                            onClick={() => handleDeleteClick(emp)}
+                          >
                             <Trash2 className="size-4" />
                             Hapus
                           </DropdownMenuItem>
@@ -235,6 +264,16 @@ export function EmployeeTable({
           )}
         </TableBody>
       </Table>
+
+      <DeleteEmployeeDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+        employee={deleteTarget}
+        onConfirm={handleDeleteConfirm}
+        isDeleting={deleteMutation.isPending}
+      />
     </div>
   );
 }

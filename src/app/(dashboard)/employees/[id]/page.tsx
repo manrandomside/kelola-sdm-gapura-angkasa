@@ -1,17 +1,21 @@
 "use client";
 
-import { use } from "react";
+import { use, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ChevronRight, Pencil, Trash2 } from "lucide-react";
 
+import { DeleteEmployeeDialog } from "@/components/employees/delete-employee-dialog";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DetailRow } from "@/components/shared/detail-row";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { useAuth } from "@/hooks/use-auth";
-import { useEmployeeDetail } from "@/hooks/use-employee-detail";
+import {
+  useDeleteEmployee,
+  useEmployeeDetail,
+} from "@/hooks/use-employee-detail";
 import { ROUTES } from "@/lib/constants/routes";
 
 interface EmployeeDetailPageProps {
@@ -28,8 +32,21 @@ export default function EmployeeDetailPage({ params }: EmployeeDetailPageProps) 
   const router = useRouter();
   const { user } = useAuth();
   const { data, isLoading, error } = useEmployeeDetail(id);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const deleteMutation = useDeleteEmployee();
 
   const canEdit = user?.role === "super_admin" || user?.role === "admin";
+
+  function handleDeleteConfirm() {
+    if (!data) return;
+    deleteMutation.mutate(data.id, {
+      onSuccess: () => {
+        setIsDeleteDialogOpen(false);
+        router.push(ROUTES.EMPLOYEES);
+        router.refresh();
+      },
+    });
+  }
 
   if (isLoading) {
     return (
@@ -147,7 +164,10 @@ export default function EmployeeDetailPage({ params }: EmployeeDetailPageProps) 
                   <Pencil className="mr-2 size-4" />
                   Edit
                 </Button>
-                <Button variant="destructive" disabled>
+                <Button
+                  variant="destructive"
+                  onClick={() => setIsDeleteDialogOpen(true)}
+                >
                   <Trash2 className="mr-2 size-4" />
                   Hapus
                 </Button>
@@ -385,6 +405,18 @@ export default function EmployeeDetailPage({ params }: EmployeeDetailPageProps) 
           </div>
         </TabsContent>
       </Tabs>
+
+      <DeleteEmployeeDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        employee={{
+          id: emp.id,
+          nama_lengkap: emp.nama_lengkap,
+          nip: emp.nip,
+        }}
+        onConfirm={handleDeleteConfirm}
+        isDeleting={deleteMutation.isPending}
+      />
     </div>
   );
 }
