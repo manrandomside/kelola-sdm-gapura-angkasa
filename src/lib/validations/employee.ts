@@ -186,3 +186,25 @@ export const createEmployeeSchema = z.object({
 
 export type CreateEmployeeInput = z.input<typeof createEmployeeSchema>;
 export type CreateEmployeeOutput = z.output<typeof createEmployeeSchema>;
+
+// Update schema — sama seperti create, tetapi semua field opsional kecuali
+// nip dan nama_lengkap. Field enum yang sebelumnya wajib di-relax menjadi
+// nullable supaya partial update tetap valid.
+export const updateEmployeeSchema = createEmployeeSchema.extend({
+  jenis_kelamin: z
+    .union([z.enum(["L", "P"]), z.literal(""), z.null()])
+    .transform((v) => (v === "" || v == null ? null : v)),
+  status_pegawai: z
+    .union([z.enum(STATUS_PEGAWAI_OPTIONS), z.literal(""), z.null()])
+    .transform((v) => (v === "" || v == null ? null : v)),
+  unit_organisasi: z
+    .union([z.enum(UNIT_ORGANISASI_OPTIONS), z.literal(""), z.null()])
+    .transform((v) => (v === "" || v == null ? null : v)),
+  nama_jabatan: optionalString(200),
+  kelompok_jabatan: z
+    .union([z.enum(KELOMPOK_JABATAN_OPTIONS), z.literal(""), z.null()])
+    .transform((v) => (v === "" || v == null ? null : v)),
+});
+
+export type UpdateEmployeeInput = z.input<typeof updateEmployeeSchema>;
+export type UpdateEmployeeOutput = z.output<typeof updateEmployeeSchema>;

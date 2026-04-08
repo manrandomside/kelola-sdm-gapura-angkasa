@@ -51,6 +51,8 @@ import {
 
 import type { ApiResponse } from "@/types/api";
 
+export type EmployeeFormMode = "create" | "edit";
+
 type TabKey = "pribadi" | "kepegawaian" | "pendidikan" | "tambahan";
 
 const TAB_LABELS: Record<TabKey, string> = {
@@ -192,6 +194,23 @@ async function createEmployee(
   return json.data;
 }
 
+async function updateEmployee(
+  id: number,
+  payload: CreateEmployeeInput,
+): Promise<CreatedEmployeeResponse> {
+  const res = await fetch(`/api/employees/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  const json = (await res.json()) as ApiResponse<CreatedEmployeeResponse>;
+  if (!json.success) {
+    throw new Error(json.error.message);
+  }
+  return json.data;
+}
+
 async function checkNipAvailable(nip: string): Promise<ValidateNipResponse> {
   const res = await fetch(`/api/employees/validate/nip/${encodeURIComponent(nip)}`, {
     method: "GET",
@@ -300,8 +319,19 @@ function SelectField({
   );
 }
 
-export function EmployeeForm() {
+interface EmployeeFormProps {
+  mode?: EmployeeFormMode;
+  employeeId?: number;
+  defaultValues?: Partial<CreateEmployeeInput>;
+}
+
+export function EmployeeForm({
+  mode = "create",
+  employeeId,
+  defaultValues,
+}: EmployeeFormProps = {}) {
   const router = useRouter();
+  const isEdit = mode === "edit";
   const [activeTab, setActiveTab] = useState<TabKey>("pribadi");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
@@ -311,9 +341,18 @@ export function EmployeeForm() {
   const [nikState, setNikState] = useState<UniquenessState>("idle");
   const [nikMessage, setNikMessage] = useState<string | null>(null);
 
+  const initialNikRef = useRef<string>(
+    (defaultValues?.nik as string | undefined) ?? "",
+  );
+
+  const mergedDefaults = useMemo<CreateEmployeeInput>(
+    () => ({ ...DEFAULT_VALUES, ...(defaultValues ?? {}) }),
+    [defaultValues],
+  );
+
   const form = useForm<CreateEmployeeInput>({
     resolver: zodResolver(createEmployeeSchema),
-    defaultValues: DEFAULT_VALUES,
+    defaultValues: mergedDefaults,
     mode: "onBlur",
   });
 
@@ -415,6 +454,13 @@ export function EmployeeForm() {
       setNikMessage(null);
       return;
     }
+    // Dalam mode edit, lewati pemeriksaan bila NIK tidak berubah dari nilai
+    // awal — endpoint validasi tidak mengecualikan id sendiri.
+    if (isEdit && trimmed === initialNikRef.current.trim()) {
+      setNikState("available");
+      setNikMessage(null);
+      return;
+    }
     setNikState("checking");
     setNikMessage(null);
     try {
@@ -433,7 +479,7 @@ export function EmployeeForm() {
   }
 
   async function onSubmit(values: CreateEmployeeInput) {
-    if (nipState === "taken") {
+    if (!isEdit && nipState === "taken") {
       toast.error("NIP sudah terdaftar. Mohon gunakan NIP lain.");
       setActiveTab("pribadi");
       return;
@@ -446,13 +492,24 @@ export function EmployeeForm() {
 
     setIsSubmitting(true);
     try {
-      await createEmployee(values);
-      toast.success("Karyawan berhasil ditambahkan");
-      router.push(ROUTES.EMPLOYEES);
-      router.refresh();
+      if (isEdit && employeeId != null) {
+        await updateEmployee(employeeId, values);
+        toast.success("Perubahan berhasil disimpan");
+        router.push(ROUTES.EMPLOYEES_DETAIL(employeeId));
+        router.refresh();
+      } else {
+        await createEmployee(values);
+        toast.success("Karyawan berhasil ditambahkan");
+        router.push(ROUTES.EMPLOYEES);
+        router.refresh();
+      }
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Gagal menambah karyawan";
+        err instanceof Error
+          ? err.message
+          : isEdit
+            ? "Gagal menyimpan perubahan"
+            : "Gagal menambah karyawan";
       toast.error(message);
     } finally {
       setIsSubmitting(false);
@@ -469,17 +526,22 @@ export function EmployeeForm() {
     toast.error("Mohon lengkapi field yang wajib diisi");
   }
 
+  const cancelHref =
+    isEdit && employeeId != null
+      ? ROUTES.EMPLOYEES_DETAIL(employeeId)
+      : ROUTES.EMPLOYEES;
+
   function handleCancel() {
     if (isDirty) {
       setShowCancelDialog(true);
       return;
     }
-    router.push(ROUTES.EMPLOYEES);
+    router.push(cancelHref);
   }
 
   function confirmCancel() {
     setShowCancelDialog(false);
-    router.push(ROUTES.EMPLOYEES);
+    router.push(cancelHref);
   }
 
   return (
@@ -538,12 +600,15 @@ export function EmployeeForm() {
                   <Input
                     id="nip"
                     placeholder="Nomor Induk Pegawai"
-                    className="pr-9"
+                    className={cn("pr-9", isEdit && "bg-muted/40")}
+                    readOnly={isEdit}
                     {...register("nip", {
-                      onBlur: (e) => handleNipBlur(e.target.value),
+                      onBlur: (e) => {
+                        if (!isEdit) handleNipBlur(e.target.value);
+                      },
                     })}
                   />
-                  <UniquenessIcon state={nipState} />
+                  {!isEdit && <UniquenessIcon state={nipState} />}
                 </div>
               </FieldRow>
 
@@ -1252,7 +1317,11 @@ export function EmployeeForm() {
         </Button>
         <Button type="submit" disabled={isSubmitting} className="gap-2">
           {isSubmitting && <Loader2 className="size-4 animate-spin" />}
-          {isSubmitting ? "Menyimpan..." : "Simpan"}
+          {isSubmitting
+            ? "Menyimpan..."
+            : isEdit
+              ? "Simpan Perubahan"
+              : "Simpan"}
         </Button>
       </div>
 

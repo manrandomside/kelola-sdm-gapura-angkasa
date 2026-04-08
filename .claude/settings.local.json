@@ -28,7 +28,15 @@
       "Bash(git push:*)",
       "Bash(curl:*)",
       "Bash(npx drizzle-kit:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(ls:*)",
+      "Bash(find C:/Users/Manrandomside/ProjectWebDev/next/sdm-gapura-angkasa/node_modules/@tanstack/react-query -name *.d.ts)",
+      "Bash(xargs grep:*)",
+      "Bash(find C:/Users/Manrandomside/ProjectWebDev/next/sdm-gapura-angkasa/node_modules/@base-ui/react/tabs -maxdepth 2 -name *.d.ts)",
+      "Bash(echo \"EXIT=$?\")",
+      "Bash(wc:*)",
+      "Bash(ls src/app/\\\\\\(dashboard\\\\\\)/employees/)",
+      "Bash(echo \"EXIT: $?\")"
     ]
   }
 }

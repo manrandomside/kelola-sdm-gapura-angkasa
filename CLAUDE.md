@@ -370,8 +370,8 @@ src/
 - [x] Employee create form (4 tab sections)
 - [x] Cascading dropdown (unit_organisasi -> unit -> sub_unit)
 - [x] NIP uniqueness check (realtime)
-- [ ] Employee detail page (Show)
-- [ ] Employee edit page
+- [x] Employee detail page (Show)
+- [x] Employee edit page
 - [ ] Employee delete + confirmation dialog
 - [ ] Activity log: record CRUD operations
 
