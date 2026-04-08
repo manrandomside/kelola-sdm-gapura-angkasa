@@ -376,11 +376,11 @@ src/
 - [x] Activity log: record CRUD operations
 
 ### Phase 3: Import/Export
-- [ ] Import: download template .xlsx
-- [ ] Import: file upload (drag & drop)
-- [ ] Import: parse CSV/XLSX via SheetJS
-- [ ] Import: preview table with validation
-- [ ] Import: data normalization (unit_organisasi casing, dates, null values)
+- [x] Import: download template .xlsx
+- [x] Import: file upload (drag & drop)
+- [x] Import: parse CSV/XLSX via SheetJS
+- [x] Import: preview table with validation
+- [x] Import: data normalization (unit_organisasi casing, dates, null values)
 - [ ] Import: execute (insert/update employees)
 - [ ] Import: auto-create user accounts (NIP = password)
 - [ ] Import: error report (per-row detail)
