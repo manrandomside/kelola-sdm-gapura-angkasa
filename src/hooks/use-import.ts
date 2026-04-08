@@ -1,10 +1,10 @@
 "use client";
 
-import { useMutation } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import type { ApiResponse } from "@/types/api";
-import type { ImportPreviewResult } from "@/lib/utils/excel";
+import type { ImportPreviewResult, NormalizedRow } from "@/lib/utils/excel";
 
 // ============================================================================
 // useDownloadTemplate — fetch /api/import/template lalu trigger download
@@ -81,5 +81,129 @@ export function useImportPreview() {
         error instanceof Error ? error.message : "Gagal memproses file";
       toast.error(message);
     },
+  });
+}
+
+// ============================================================================
+// useImportExecute — kirim row yang valid + warning ke /api/import/execute.
+// Proses panjang (1414 row ~ 5-15 menit); gunakan timeout fetch default dan
+// andalkan maxDuration di route.
+// ============================================================================
+export interface ImportExecuteRow {
+  rowNumber: number;
+  data: NormalizedRow;
+  isExistingNip: boolean;
+}
+
+export interface ImportRowError {
+  rowNumber: number;
+  nip: string | null;
+  nama_lengkap: string | null;
+  error: string;
+}
+
+export interface ImportExecuteResult {
+  totalProcessed: number;
+  successCount: number;
+  errorCount: number;
+  accountsCreated: number;
+  accountsSkipped: number;
+  errors: ImportRowError[];
+  importLogId: string;
+}
+
+export interface ImportExecutePayload {
+  rows: ImportExecuteRow[];
+  fileName: string;
+}
+
+async function executeImport(
+  payload: ImportExecutePayload,
+): Promise<ImportExecuteResult> {
+  const res = await fetch("/api/import/execute", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  const json = (await res.json()) as ApiResponse<ImportExecuteResult>;
+  if (!json.success) {
+    throw new Error(json.error.message);
+  }
+  return json.data;
+}
+
+export function useImportExecute() {
+  return useMutation({
+    mutationFn: (payload: ImportExecutePayload) => executeImport(payload),
+    onError: (error) => {
+      const message =
+        error instanceof Error ? error.message : "Gagal mengeksekusi import";
+      toast.error(message);
+    },
+  });
+}
+
+// ============================================================================
+// useImportLogs — fetch riwayat import untuk halaman /import/logs.
+// ============================================================================
+export interface ImportLogItem {
+  id: string;
+  user_id: string | null;
+  user_name: string | null;
+  file_name: string;
+  total_rows: number;
+  success_count: number;
+  error_count: number;
+  skipped_count: number;
+  error_details: ImportRowError[] | null;
+  status: string;
+  started_at: string;
+  completed_at: string | null;
+  created_at: string;
+}
+
+export interface ImportLogListData {
+  logs: ImportLogItem[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export interface UseImportLogsParams {
+  page: number;
+  limit: number;
+}
+
+async function fetchImportLogs(
+  params: UseImportLogsParams,
+): Promise<ImportLogListData> {
+  const sp = new URLSearchParams();
+  sp.set("page", String(params.page));
+  sp.set("limit", String(params.limit));
+
+  const res = await fetch(`/api/import/logs?${sp.toString()}`, {
+    method: "GET",
+    credentials: "include",
+    cache: "no-store",
+  });
+
+  const json = (await res.json()) as ApiResponse<ImportLogListData>;
+  if (!json.success) {
+    throw new Error(json.error.message);
+  }
+  return json.data;
+}
+
+export function useImportLogs(params: UseImportLogsParams) {
+  return useQuery({
+    queryKey: ["import-logs", params],
+    queryFn: () => fetchImportLogs(params),
+    placeholderData: keepPreviousData,
+    staleTime: 30 * 1000,
   });
 }

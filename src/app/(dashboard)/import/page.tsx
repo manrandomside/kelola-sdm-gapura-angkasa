@@ -1,6 +1,7 @@
 "use client";
 
-import { Fragment, useCallback, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useDropzone, type FileRejection } from "react-dropzone";
 import {
   AlertCircle,
@@ -10,11 +11,15 @@ import {
   ChevronRight,
   Download,
   FileSpreadsheet,
+  History,
   Loader2,
+  RotateCcw,
   Upload,
+  Users,
   X,
   XCircle,
 } from "lucide-react";
+import * as XLSX from "xlsx";
 import { toast } from "sonner";
 
 import { Pagination } from "@/components/shared/pagination";
@@ -38,7 +43,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useDownloadTemplate, useImportPreview } from "@/hooks/use-import";
+import {
+  useDownloadTemplate,
+  useImportExecute,
+  useImportPreview,
+  type ImportExecuteResult,
+} from "@/hooks/use-import";
+import { ROUTES } from "@/lib/constants/routes";
 import { cn } from "@/lib/utils";
 
 import type {
@@ -115,9 +126,24 @@ export default function ImportPage() {
   const [previewPage, setPreviewPage] = useState(1);
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [executeResult, setExecuteResult] =
+    useState<ImportExecuteResult | null>(null);
 
   const downloadTemplate = useDownloadTemplate();
   const importPreview = useImportPreview();
+  const importExecute = useImportExecute();
+
+  // Warning saat user mencoba meninggalkan halaman ketika import sedang
+  // berjalan — proses 1414 row bisa 5-15 menit, jangan sampai interrupt.
+  useEffect(() => {
+    if (!importExecute.isPending) return;
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      e.preventDefault();
+      e.returnValue = "";
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [importExecute.isPending]);
 
   const onDrop = useCallback(
     (accepted: File[], rejections: FileRejection[]) => {
@@ -172,6 +198,17 @@ export default function ImportPage() {
     setExpandedRows(new Set());
   }
 
+  function handleResetAll() {
+    setFile(null);
+    setPreview(null);
+    setExecuteResult(null);
+    setFilterTab("all");
+    setPreviewPage(1);
+    setExpandedRows(new Set());
+    importExecute.reset();
+    importPreview.reset();
+  }
+
   function toggleRowExpanded(rowNumber: number) {
     setExpandedRows((prev) => {
       const next = new Set(prev);
@@ -182,8 +219,61 @@ export default function ImportPage() {
   }
 
   function handleConfirmImport() {
+    if (!preview || !file) return;
     setIsConfirmOpen(false);
-    toast.info("Fitur execute import akan tersedia di update berikutnya.");
+
+    // Kirim hanya row valid + warning (bukan error/skip).
+    const rowsToSend = preview.rows
+      .filter((r) => r.status === "valid" || r.status === "warning")
+      .map((r) => ({
+        rowNumber: r.rowNumber,
+        data: r.data,
+        isExistingNip: r.isExistingNip,
+      }));
+
+    importExecute.mutate(
+      { rows: rowsToSend, fileName: file.name },
+      {
+        onSuccess: (data) => {
+          setExecuteResult(data);
+          if (data.errorCount === 0) {
+            toast.success(
+              `${data.successCount.toLocaleString("id-ID")} data berhasil diimport`,
+            );
+          } else if (data.successCount === 0) {
+            toast.error("Import gagal. Semua baris mengalami error.");
+          } else {
+            toast.warning(
+              `Import selesai dengan ${data.errorCount} error`,
+            );
+          }
+        },
+      },
+    );
+  }
+
+  function handleDownloadErrorReport() {
+    if (!executeResult || executeResult.errors.length === 0) return;
+    const rows = executeResult.errors.map((e) => ({
+      "No Baris": e.rowNumber,
+      NIP: e.nip ?? "",
+      Nama: e.nama_lengkap ?? "",
+      Error: e.error,
+    }));
+    const sheet = XLSX.utils.json_to_sheet(rows);
+    sheet["!cols"] = [
+      { wch: 10 },
+      { wch: 20 },
+      { wch: 35 },
+      { wch: 60 },
+    ];
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, sheet, "Error Import");
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, "0");
+    const dd = String(today.getDate()).padStart(2, "0");
+    XLSX.writeFile(workbook, `Error_Import_${yyyy}-${mm}-${dd}.xlsx`);
   }
 
   // Filter rows berdasarkan tab aktif.
@@ -208,6 +298,214 @@ export default function ImportPage() {
   const importableCount = preview
     ? preview.summary.validCount + preview.summary.warningCount
     : 0;
+
+  // ==========================================================================
+  // Step 4 — Hasil Import (setelah execute selesai)
+  // ==========================================================================
+  if (executeResult) {
+    const {
+      successCount,
+      errorCount,
+      accountsCreated,
+      errors: resultErrors,
+    } = executeResult;
+
+    return (
+      <div className="space-y-6">
+        <div className="space-y-1">
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-foreground sm:text-3xl">
+            <FileSpreadsheet className="size-7 text-primary" />
+            Hasil Import Data
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Ringkasan hasil eksekusi import data karyawan.
+          </p>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div className="rounded-xl border border-green-200 bg-green-50 p-5">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="size-5 text-green-600" />
+              <p className="text-sm font-semibold text-green-800">
+                Berhasil
+              </p>
+            </div>
+            <p className="mt-2 text-3xl font-bold tabular-nums text-green-700">
+              {successCount.toLocaleString("id-ID")}
+            </p>
+            <p className="mt-1 text-xs text-green-700/80">
+              data karyawan ter-import
+            </p>
+          </div>
+
+          <div
+            className={cn(
+              "rounded-xl border p-5",
+              errorCount > 0
+                ? "border-red-200 bg-red-50"
+                : "border-gray-200 bg-gray-50",
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <XCircle
+                className={cn(
+                  "size-5",
+                  errorCount > 0 ? "text-red-600" : "text-gray-400",
+                )}
+              />
+              <p
+                className={cn(
+                  "text-sm font-semibold",
+                  errorCount > 0 ? "text-red-800" : "text-gray-600",
+                )}
+              >
+                Gagal
+              </p>
+            </div>
+            <p
+              className={cn(
+                "mt-2 text-3xl font-bold tabular-nums",
+                errorCount > 0 ? "text-red-700" : "text-gray-500",
+              )}
+            >
+              {errorCount.toLocaleString("id-ID")}
+            </p>
+            <p
+              className={cn(
+                "mt-1 text-xs",
+                errorCount > 0 ? "text-red-700/80" : "text-gray-500",
+              )}
+            >
+              baris tidak bisa diproses
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-blue-200 bg-blue-50 p-5">
+            <div className="flex items-center gap-2">
+              <Users className="size-5 text-blue-600" />
+              <p className="text-sm font-semibold text-blue-800">
+                Akun Baru
+              </p>
+            </div>
+            <p className="mt-2 text-3xl font-bold tabular-nums text-blue-700">
+              {accountsCreated.toLocaleString("id-ID")}
+            </p>
+            <p className="mt-1 text-xs text-blue-700/80">
+              akun login dibuat (password = NIP)
+            </p>
+          </div>
+        </div>
+
+        {resultErrors.length > 0 && (
+          <div className="overflow-hidden rounded-xl border border-border bg-card">
+            <div className="flex items-center justify-between border-b border-border bg-muted/30 px-4 py-3">
+              <h2 className="text-sm font-semibold text-foreground">
+                Detail Error ({resultErrors.length})
+              </h2>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDownloadErrorReport}
+              >
+                <Download className="size-4" />
+                Download Error Report
+              </Button>
+            </div>
+            <div className="max-h-[500px] overflow-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/30 hover:bg-muted/30">
+                    <TableHead className="w-[80px] text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Row
+                    </TableHead>
+                    <TableHead className="w-[140px] text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      NIP
+                    </TableHead>
+                    <TableHead className="min-w-[200px] text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Nama
+                    </TableHead>
+                    <TableHead className="min-w-[300px] text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Error
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {resultErrors.map((e) => (
+                    <TableRow key={`err-${e.rowNumber}`} className="bg-red-50/40">
+                      <TableCell className="text-sm tabular-nums text-muted-foreground">
+                        {e.rowNumber}
+                      </TableCell>
+                      <TableCell className="font-mono text-sm">
+                        {e.nip ?? (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-sm font-medium text-foreground">
+                        {e.nama_lengkap ?? (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-sm text-red-700">
+                        {e.error}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        )}
+
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <Button variant="outline" onClick={handleResetAll}>
+            <RotateCcw className="size-4" />
+            Import Lagi
+          </Button>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Button
+              variant="outline"
+              render={<Link href="/import/logs" />}
+            >
+              <History className="size-4" />
+              Riwayat Import
+            </Button>
+            <Button render={<Link href={ROUTES.EMPLOYEES} />}>
+              <Users className="size-4" />
+              Lihat Data Karyawan
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ==========================================================================
+  // Step 3 — Progress Import (sedang berjalan)
+  // ==========================================================================
+  if (importExecute.isPending) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="w-full max-w-md rounded-xl border border-border bg-card p-8 text-center">
+          <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-primary/10">
+            <Loader2 className="size-8 animate-spin text-primary" />
+          </div>
+          <h2 className="mt-4 text-xl font-bold text-foreground">
+            Sedang Mengimport Data
+          </h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Mohon tunggu, proses ini dapat memakan waktu beberapa menit untuk
+            data dalam jumlah besar.
+          </p>
+          <div className="mt-6 overflow-hidden rounded-full bg-muted">
+            <div className="h-2 w-full animate-pulse bg-primary" />
+          </div>
+          <p className="mt-4 text-xs text-muted-foreground">
+            Jangan tutup atau refresh halaman ini sampai proses selesai.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // ==========================================================================
   // Step 2 — Preview & Validasi
@@ -537,15 +835,21 @@ export default function ImportPage() {
   // ==========================================================================
   return (
     <div className="space-y-6">
-      <div className="space-y-1">
-        <h1 className="flex items-center gap-2 text-2xl font-bold text-foreground sm:text-3xl">
-          <FileSpreadsheet className="size-7 text-primary" />
-          Import Data Karyawan
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Upload file Excel (.xlsx) atau CSV (.csv) untuk import data karyawan
-          secara massal.
-        </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-foreground sm:text-3xl">
+            <FileSpreadsheet className="size-7 text-primary" />
+            Import Data Karyawan
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Upload file Excel (.xlsx) atau CSV (.csv) untuk import data
+            karyawan secara massal.
+          </p>
+        </div>
+        <Button variant="outline" render={<Link href="/import/logs" />}>
+          <History className="size-4" />
+          Riwayat Import
+        </Button>
       </div>
 
       <div className="rounded-xl border border-border bg-card p-6">

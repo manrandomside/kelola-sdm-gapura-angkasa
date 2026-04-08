@@ -36,7 +36,9 @@
       "Bash(echo \"EXIT=$?\")",
       "Bash(wc:*)",
       "Bash(ls src/app/\\\\\\(dashboard\\\\\\)/employees/)",
-      "Bash(echo \"EXIT: $?\")"
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(python -c \":*)",
+      "Bash(npx next:*)"
     ]
   }
 }

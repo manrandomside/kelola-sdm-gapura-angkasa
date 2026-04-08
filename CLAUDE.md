@@ -381,11 +381,11 @@ src/
 - [x] Import: parse CSV/XLSX via SheetJS
 - [x] Import: preview table with validation
 - [x] Import: data normalization (unit_organisasi casing, dates, null values)
-- [ ] Import: execute (insert/update employees)
-- [ ] Import: auto-create user accounts (NIP = password)
-- [ ] Import: error report (per-row detail)
-- [ ] Import: progress indicator
-- [ ] Import: log history page
+- [x] Import: execute (insert/update employees)
+- [x] Import: auto-create user accounts (NIP = password)
+- [x] Import: error report (per-row detail)
+- [x] Import: progress indicator
+- [x] Import: log history page
 - [ ] Export: Excel with current filters
 - [ ] Export: styled header (green #439454, white text)
 
