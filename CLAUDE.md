@@ -386,8 +386,8 @@ src/
 - [x] Import: error report (per-row detail)
 - [x] Import: progress indicator
 - [x] Import: log history page
-- [ ] Export: Excel with current filters
-- [ ] Export: styled header (green #439454, white text)
+- [x] Export: Excel with current filters
+- [x] Export: styled header (green #439454, white text)
 
 ### Phase 4: Dashboard & Supporting
 - [ ] Dashboard: statistics cards (total, breakdown by status_kontrak)

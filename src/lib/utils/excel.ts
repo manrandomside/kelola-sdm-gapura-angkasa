@@ -1,6 +1,7 @@
 import * as XLSX from "xlsx";
+import * as XLSXStyle from "xlsx-js-style";
 
-import { parseFlexibleDate, toISODateString } from "@/lib/utils/date";
+import { formatDateWITA, parseFlexibleDate, toISODateString } from "@/lib/utils/date";
 import {
   JENIS_KELAMIN_OPTIONS,
   KELOMPOK_JABATAN_OPTIONS,
@@ -703,6 +704,269 @@ export async function processImportFile(
 ): Promise<ImportPreviewResult> {
   const parsed = await parseImportFile(file);
   return buildImportPreview(parsed, existingNips ?? new Set<string>());
+}
+
+// ============================================================================
+// Export — generate file .xlsx dari data employee dengan header styled.
+// Menggunakan xlsx-js-style (fork SheetJS yang support cell styling) karena
+// SheetJS community edition tidak support fill / font color.
+// ============================================================================
+
+// Tipe record employee yang dibutuhkan untuk export. Dibuat longgar agar
+// konsumen route bisa pass hasil query Drizzle langsung tanpa mapping manual.
+export interface ExportEmployeeRecord {
+  nip: string | null;
+  nik: string | null;
+  nama_lengkap: string | null;
+  lokasi_kerja: string | null;
+  cabang: string | null;
+  status_pegawai: string | null;
+  status_kontrak: string | null;
+  status_kerja: string | null;
+  provider: string | null;
+  unit_organisasi: string | null;
+  kode_organisasi: string | null;
+  nama_organisasi: string | null;
+  sub_unit_organisasi: string | null;
+  nama_jabatan: string | null;
+  unit_kerja_kontrak: string | null;
+  tmt_mulai_kerja: string | null;
+  tmt_mulai_jabatan: string | null;
+  tmt_berakhir_jabatan: string | null;
+  tmt_berakhir_kerja: string | null;
+  masa_kerja_bulan: string | null;
+  masa_kerja_tahun: string | null;
+  jenis_kelamin: string | null;
+  jenis_sepatu: string | null;
+  ukuran_sepatu: string | null;
+  tempat_lahir: string | null;
+  tanggal_lahir: string | null;
+  usia: number | null;
+  kota_domisili: string | null;
+  alamat: string | null;
+  pendidikan: string | null;
+  instansi_pendidikan: string | null;
+  jurusan: string | null;
+  remarks_pendidikan: string | null;
+  tahun_lulus: number | null;
+  handphone: string | null;
+  email: string | null;
+  kategori_karyawan: string | null;
+  tmt_pensiun: string | null;
+  grade: string | null;
+  no_bpjs_kesehatan: string | null;
+  no_bpjs_ketenagakerjaan: string | null;
+  kelompok_jabatan: string | null;
+  kelas_jabatan: string | null;
+  weight: number | null;
+  height: number | null;
+}
+
+type ExportField = keyof ExportEmployeeRecord;
+
+interface ExportColumnDef {
+  header: string;
+  field: ExportField | "no_urut";
+  isDate?: boolean;
+}
+
+// 45 kolom — urutan & label persis mengikuti template import agar file
+// hasil export kompatibel jika di-import kembali.
+const EXPORT_COLUMNS_ALL: readonly ExportColumnDef[] = [
+  { header: "NO", field: "no_urut" },
+  { header: "NIP", field: "nip" },
+  { header: "KTP / NIK", field: "nik" },
+  { header: "NAMA LENGKAP", field: "nama_lengkap" },
+  { header: "LOKASI KERJA", field: "lokasi_kerja" },
+  { header: "CABANG", field: "cabang" },
+  { header: "STATUS PEGAWAI", field: "status_pegawai" },
+  { header: "STATUS KONTRAK", field: "status_kontrak" },
+  { header: "STATUS KERJA", field: "status_kerja" },
+  { header: "PROVIDER", field: "provider" },
+  { header: "UNIT ORGANISASI", field: "unit_organisasi" },
+  { header: "KODE ORGANISASI", field: "kode_organisasi" },
+  { header: "NAMA ORGANISASI", field: "nama_organisasi" },
+  { header: "SUB UNIT ORGANISASI", field: "sub_unit_organisasi" },
+  { header: "NAMA JABATAN", field: "nama_jabatan" },
+  { header: "UNIT KERJA SESUAI KONTRAK", field: "unit_kerja_kontrak" },
+  { header: "TMT MULAI KERJA", field: "tmt_mulai_kerja", isDate: true },
+  { header: "TMT MULAI JABATAN", field: "tmt_mulai_jabatan", isDate: true },
+  { header: "TMT BERAKHIR JABATAN", field: "tmt_berakhir_jabatan", isDate: true },
+  { header: "TMT BERAKHIR KERJA", field: "tmt_berakhir_kerja", isDate: true },
+  { header: "MASA KERJA (BULAN)", field: "masa_kerja_bulan" },
+  { header: "MASA KERJA (TAHUN)", field: "masa_kerja_tahun" },
+  { header: "JENIS KELAMIN", field: "jenis_kelamin" },
+  { header: "JENIS SEPATU", field: "jenis_sepatu" },
+  { header: "UKURAN SEPATU", field: "ukuran_sepatu" },
+  { header: "TEMPAT LAHIR", field: "tempat_lahir" },
+  { header: "TANGGAL LAHIR", field: "tanggal_lahir", isDate: true },
+  { header: "USIA", field: "usia" },
+  { header: "KOTA DOMISILI", field: "kota_domisili" },
+  { header: "ALAMAT", field: "alamat" },
+  { header: "PENDIDIKAN", field: "pendidikan" },
+  { header: "NAMA INSTANSI PENDIDIKAN", field: "instansi_pendidikan" },
+  { header: "JURUSAN", field: "jurusan" },
+  { header: "REMARKS PENDIDIKAN", field: "remarks_pendidikan" },
+  { header: "TAHUN LULUS", field: "tahun_lulus" },
+  { header: "HANDPHONE", field: "handphone" },
+  { header: "KATEGORI KARYAWAN", field: "kategori_karyawan" },
+  { header: "TMT PENSIUN", field: "tmt_pensiun", isDate: true },
+  { header: "GRADE", field: "grade" },
+  { header: "NO BPJS KESEHATAN", field: "no_bpjs_kesehatan" },
+  { header: "NO BPJS KETENAGAKERJAAN", field: "no_bpjs_ketenagakerjaan" },
+  { header: "KELOMPOK JABATAN", field: "kelompok_jabatan" },
+  { header: "KELAS JABATAN", field: "kelas_jabatan" },
+  { header: "WEIGHT", field: "weight" },
+  { header: "HEIGHT", field: "height" },
+];
+
+// 15 kolom dasar — untuk keperluan laporan ringkas.
+const EXPORT_COLUMNS_BASIC: readonly ExportColumnDef[] = [
+  { header: "NO", field: "no_urut" },
+  { header: "NIP", field: "nip" },
+  { header: "NIK", field: "nik" },
+  { header: "NAMA LENGKAP", field: "nama_lengkap" },
+  { header: "JENIS KELAMIN", field: "jenis_kelamin" },
+  { header: "STATUS PEGAWAI", field: "status_pegawai" },
+  { header: "STATUS KONTRAK", field: "status_kontrak" },
+  { header: "STATUS KERJA", field: "status_kerja" },
+  { header: "PROVIDER", field: "provider" },
+  { header: "UNIT ORGANISASI", field: "unit_organisasi" },
+  { header: "NAMA JABATAN", field: "nama_jabatan" },
+  { header: "HANDPHONE", field: "handphone" },
+  { header: "EMAIL", field: "email" },
+  { header: "TMT MULAI KERJA", field: "tmt_mulai_kerja", isDate: true },
+  { header: "TMT BERAKHIR KERJA", field: "tmt_berakhir_kerja", isDate: true },
+];
+
+export type ExportColumnSet = "all" | "basic";
+
+export interface GenerateExportOptions {
+  sheetName?: string;
+  columns?: ExportColumnSet;
+}
+
+// Helper: convert nilai field ke cell value untuk worksheet. Null/undefined
+// selalu jadi string kosong. Tanggal di-format DD/MM/YYYY via WITA timezone.
+function toCellValue(
+  record: ExportEmployeeRecord,
+  column: ExportColumnDef,
+  rowIndex: number,
+): string | number {
+  if (column.field === "no_urut") return rowIndex + 1;
+
+  const raw = record[column.field];
+  if (raw == null) return "";
+
+  if (column.isDate) {
+    if (typeof raw !== "string") return "";
+    const formatted = formatDateWITA(raw, "dd/MM/yyyy");
+    return formatted || "";
+  }
+
+  if (typeof raw === "number") {
+    return Number.isFinite(raw) ? raw : "";
+  }
+
+  return String(raw);
+}
+
+// Style untuk baris header: background #439454, text putih, bold, center.
+const HEADER_STYLE = {
+  font: { name: "Figtree", bold: true, color: { rgb: "FFFFFFFF" }, sz: 11 },
+  fill: { patternType: "solid", fgColor: { rgb: "FF439454" } },
+  alignment: { horizontal: "center", vertical: "center", wrapText: true },
+  border: {
+    top: { style: "thin", color: { rgb: "FF2D5A37" } },
+    bottom: { style: "thin", color: { rgb: "FF2D5A37" } },
+    left: { style: "thin", color: { rgb: "FF2D5A37" } },
+    right: { style: "thin", color: { rgb: "FF2D5A37" } },
+  },
+} as const;
+
+const DATA_STYLE = {
+  font: { name: "Figtree", sz: 10 },
+  alignment: { vertical: "center", wrapText: false },
+} as const;
+
+export function generateExportExcel(
+  employees: ReadonlyArray<ExportEmployeeRecord>,
+  options: GenerateExportOptions = {},
+): ArrayBuffer {
+  const columnSet: ExportColumnSet = options.columns ?? "all";
+  const sheetName = options.sheetName ?? "Data SDM";
+  const columns =
+    columnSet === "basic" ? EXPORT_COLUMNS_BASIC : EXPORT_COLUMNS_ALL;
+
+  // Build cell data row-by-row dengan style inline (xlsx-js-style membaca
+  // property `s` pada setiap cell object).
+  type StyledCell = { v: string | number; t: "s" | "n"; s: unknown };
+  const aoa: StyledCell[][] = [];
+
+  // Header row.
+  aoa.push(
+    columns.map((col) => ({
+      v: col.header,
+      t: "s",
+      s: HEADER_STYLE,
+    })),
+  );
+
+  // Data rows.
+  employees.forEach((record, index) => {
+    const row: StyledCell[] = columns.map((col) => {
+      const value = toCellValue(record, col, index);
+      const isNumber = typeof value === "number";
+      return {
+        v: value,
+        t: isNumber ? "n" : "s",
+        s: DATA_STYLE,
+      };
+    });
+    aoa.push(row);
+  });
+
+  // Konversi ke worksheet via xlsx-js-style.
+  const sheet = XLSXStyle.utils.aoa_to_sheet(
+    aoa.map((row) => row.map((cell) => cell.v)),
+  );
+
+  // Re-assign cell objects dengan style (aoa_to_sheet tidak pertahankan `s`).
+  for (let r = 0; r < aoa.length; r++) {
+    for (let c = 0; c < aoa[r]!.length; c++) {
+      const addr = XLSXStyle.utils.encode_cell({ r, c });
+      const cell = aoa[r]![c]!;
+      sheet[addr] = { v: cell.v, t: cell.t, s: cell.s };
+    }
+  }
+
+  // Column widths: max antara panjang header dan panjang content (capped).
+  sheet["!cols"] = columns.map((col) => {
+    let maxLen = col.header.length;
+    for (let r = 0; r < employees.length; r++) {
+      const value = toCellValue(employees[r]!, col, r);
+      const len = String(value).length;
+      if (len > maxLen) maxLen = len;
+    }
+    return { wch: Math.min(Math.max(maxLen + 2, 10), 40) };
+  });
+
+  // Header row height sedikit lebih tinggi agar styling terasa.
+  sheet["!rows"] = [{ hpt: 24 }];
+
+  // Freeze header row.
+  sheet["!freeze"] = { xSplit: 0, ySplit: 1 };
+
+  const workbook = XLSXStyle.utils.book_new();
+  XLSXStyle.utils.book_append_sheet(workbook, sheet, sheetName);
+
+  const buffer = XLSXStyle.write(workbook, {
+    type: "array",
+    bookType: "xlsx",
+    cellStyles: true,
+  }) as ArrayBuffer;
+
+  return buffer;
 }
 
 // ============================================================================

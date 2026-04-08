@@ -1,9 +1,11 @@
 "use client";
 
-import { Plus, Users } from "lucide-react";
+import { Download, Plus, Users } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 
 import { EmployeeTable } from "@/components/employees/employee-table";
+import { ExportDialog } from "@/components/import-export/export-dialog";
 import { FilterBar } from "@/components/shared/filter-bar";
 import { Pagination } from "@/components/shared/pagination";
 import { SearchInput } from "@/components/shared/search-input";
@@ -105,6 +107,8 @@ export default function EmployeesPage() {
   const canEdit = user?.role === "super_admin" || user?.role === "admin";
   const activeCount = activeFilterCount();
 
+  const [exportOpen, setExportOpen] = useState(false);
+
   return (
     <div className="space-y-6">
       {/* Page header */}
@@ -121,16 +125,27 @@ export default function EmployeesPage() {
             Kelola data karyawan PT Gapura Angkasa.
           </p>
         </div>
-        {canEdit && (
+        <div className="flex flex-wrap items-center gap-2">
           <Button
-            render={<Link href={ROUTES.EMPLOYEES_CREATE} />}
+            variant="outline"
             size="lg"
             className="gap-1.5"
+            onClick={() => setExportOpen(true)}
           >
-            <Plus className="size-4" />
-            Tambah Karyawan
+            <Download className="size-4" />
+            Export
           </Button>
-        )}
+          {canEdit && (
+            <Button
+              render={<Link href={ROUTES.EMPLOYEES_CREATE} />}
+              size="lg"
+              className="gap-1.5"
+            >
+              <Plus className="size-4" />
+              Tambah Karyawan
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Statistics mini cards */}
@@ -189,6 +204,21 @@ export default function EmployeesPage() {
         total={pagination.total}
         totalPages={pagination.totalPages}
         onPageChange={setPage}
+      />
+
+      {/* Export dialog */}
+      <ExportDialog
+        open={exportOpen}
+        onOpenChange={setExportOpen}
+        activeFilter={{
+          search,
+          status_pegawai,
+          status_kontrak,
+          unit_organisasi,
+          provider,
+          status_kerja,
+        }}
+        activeFilterCount={activeCount + (search.length > 0 ? 1 : 0)}
       />
     </div>
   );
