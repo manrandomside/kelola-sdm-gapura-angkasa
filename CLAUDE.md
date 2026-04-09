@@ -395,11 +395,11 @@ src/
 - [x] Dashboard: bar chart (unit organisasi)
 - [x] Dashboard: bar chart (provider)
 - [x] Dashboard: recent activities
-- [ ] Activity log page (list + filter + pagination)
-- [ ] User management: list users
-- [ ] User management: create user
-- [ ] User management: edit role/status
-- [ ] User management: reset password to NIP
+- [x] Activity log page (list + filter + pagination)
+- [x] User management: list users
+- [x] User management: create user
+- [x] User management: edit role/status
+- [x] User management: reset password to NIP
 
 ### Phase 5: Polish
 - [ ] Responsive: tablet layout
