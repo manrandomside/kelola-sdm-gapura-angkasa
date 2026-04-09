@@ -38,7 +38,11 @@
       "Bash(ls src/app/\\\\\\(dashboard\\\\\\)/employees/)",
       "Bash(echo \"EXIT: $?\")",
       "Bash(python -c \":*)",
-      "Bash(npx next:*)"
+      "Bash(npx next:*)",
+      "Bash(ls src/app/\\\\\\(dashboard\\\\\\)/export)",
+      "Bash(ls src/app/\\\\\\(dashboard\\\\\\)/dashboard)",
+      "Bash(ls \"src/app/\\(dashboard\\)/dashboard\")",
+      "Bash(ls src/app/\"\\(auth\\)\"/layout.tsx)"
     ]
   }
 }

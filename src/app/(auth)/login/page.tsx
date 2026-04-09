@@ -1,7 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import { useState, type FormEvent } from "react";
-import { Building2, Eye, EyeOff, Lock, User } from "lucide-react";
+import { Eye, EyeOff, Lock, Smartphone, User } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,9 +39,14 @@ export default function LoginPage() {
   return (
     <div className="rounded-2xl border border-border bg-card p-8 shadow-sm">
       <div className="flex flex-col items-center text-center">
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
-          <Building2 className="h-7 w-7" aria-hidden="true" />
-        </div>
+        <Image
+          src="/images/gapuraangkasa.jpg"
+          alt="Gapura Angkasa"
+          width={240}
+          height={80}
+          priority
+          className="h-16 w-auto object-contain"
+        />
         <h1 className="mt-4 text-2xl font-bold text-foreground">
           Kelola SDM Gapura Angkasa
         </h1>
@@ -130,6 +136,17 @@ export default function LoginPage() {
       <p className="mt-6 text-center text-xs text-muted-foreground">
         Hubungi administrator jika Anda lupa password.
       </p>
+
+      <div className="mt-5 flex items-start gap-2 rounded-lg border border-border bg-secondary/40 px-3 py-2.5 text-xs text-muted-foreground">
+        <Smartphone
+          className="mt-0.5 h-4 w-4 shrink-0 text-primary"
+          aria-hidden="true"
+        />
+        <span>
+          Pasang sebagai aplikasi di perangkat Anda melalui menu browser
+          &quot;Add to Home Screen&quot; untuk akses lebih cepat.
+        </span>
+      </div>
     </div>
   );
 }

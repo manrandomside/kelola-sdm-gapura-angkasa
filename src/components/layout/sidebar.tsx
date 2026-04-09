@@ -1,11 +1,11 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
-  Building2,
   ChevronDown,
   Download,
   FileSpreadsheet,
@@ -204,9 +204,14 @@ export function Sidebar({
     <aside className="flex h-full w-full flex-col bg-card">
       {/* Header */}
       <div className="flex items-center gap-3 px-5 py-5">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-          <Building2 className="h-5 w-5" aria-hidden="true" />
-        </div>
+        <Image
+          src="/images/logo-sidebar.png"
+          alt="Gapura Angkasa"
+          width={140}
+          height={40}
+          priority
+          className="h-10 w-auto object-contain"
+        />
         <div className="flex flex-col leading-tight">
           <span className="text-sm font-semibold text-foreground">Kelola SDM</span>
           <span className="text-xs text-muted-foreground">Gapura Angkasa</span>
