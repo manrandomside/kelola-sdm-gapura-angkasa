@@ -19,7 +19,7 @@ import { useFilterStore } from "@/stores/filter-store";
 interface MiniStatProps {
   label: string;
   value: number;
-  tone: "default" | "blue" | "violet" | "green" | "red";
+  tone: "default" | "blue" | "violet" | "green" | "red" | "orange";
 }
 
 const TONE_STYLES: Record<MiniStatProps["tone"], string> = {
@@ -28,6 +28,7 @@ const TONE_STYLES: Record<MiniStatProps["tone"], string> = {
   violet: "bg-violet-50",
   green: "bg-green-50",
   red: "bg-red-50",
+  orange: "bg-orange-50",
 };
 
 const VALUE_TONE: Record<MiniStatProps["tone"], string> = {
@@ -36,6 +37,7 @@ const VALUE_TONE: Record<MiniStatProps["tone"], string> = {
   violet: "text-violet-700",
   green: "text-green-700",
   red: "text-red-700",
+  orange: "text-orange-700",
 };
 
 function MiniStatCard({ label, value, tone }: MiniStatProps) {
@@ -99,6 +101,7 @@ export default function EmployeesPage() {
   const statistics = query.data?.statistics ?? {
     total: 0,
     pegawaiTetap: 0,
+    pkwt: 0,
     tad: 0,
     aktif: 0,
     nonAktif: 0,
@@ -156,7 +159,8 @@ export default function EmployeesPage() {
           value={statistics.pegawaiTetap}
           tone="blue"
         />
-        <MiniStatCard label="TAD" value={statistics.tad} tone="violet" />
+        <MiniStatCard label="PKWT" value={statistics.pkwt} tone="violet" />
+        <MiniStatCard label="TAD" value={statistics.tad} tone="orange" />
         <MiniStatCard label="Aktif" value={statistics.aktif} tone="green" />
         <MiniStatCard label="Non Aktif" value={statistics.nonAktif} tone="red" />
       </div>

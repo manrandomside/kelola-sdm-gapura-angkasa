@@ -39,6 +39,7 @@ import {
   STATUS_KERJA_OPTIONS,
   STATUS_KONTRAK_OPTIONS,
   STATUS_PEGAWAI_OPTIONS,
+  STATUS_PEGAWAI_TO_KONTRAK,
   UKURAN_SEPATU_OPTIONS,
   UNIT_ORGANISASI_OPTIONS,
 } from "@/lib/constants/enums";
@@ -364,6 +365,32 @@ export function EmployeeForm({
     setValue,
     watch,
   } = form;
+
+  // Cascading status_pegawai -> status_kontrak
+  const watchedStatusPegawai = watch("status_pegawai");
+  const filteredKontrakOptions = useMemo(() => {
+    if (!watchedStatusPegawai) return STATUS_KONTRAK_OPTIONS;
+    const allowed = STATUS_PEGAWAI_TO_KONTRAK[watchedStatusPegawai];
+    if (!allowed) return STATUS_KONTRAK_OPTIONS;
+    return STATUS_KONTRAK_OPTIONS.filter((opt) => allowed.includes(opt));
+  }, [watchedStatusPegawai]);
+
+  // Reset status_kontrak when status_pegawai changes and current value is not valid.
+  type KontrakFieldValue = CreateEmployeeInput["status_kontrak"];
+  const prevStatusPegawai = useRef(watchedStatusPegawai);
+  useEffect(() => {
+    if (prevStatusPegawai.current !== watchedStatusPegawai) {
+      const allowed = STATUS_PEGAWAI_TO_KONTRAK[watchedStatusPegawai];
+      const currentKontrak = watch("status_kontrak");
+      if (allowed && currentKontrak && !allowed.includes(currentKontrak as string)) {
+        const next = (allowed.length === 1 ? allowed[0] : "") as KontrakFieldValue;
+        setValue("status_kontrak", next);
+      } else if (allowed?.length === 1) {
+        setValue("status_kontrak", allowed[0] as KontrakFieldValue);
+      }
+      prevStatusPegawai.current = watchedStatusPegawai;
+    }
+  }, [watchedStatusPegawai, setValue, watch]);
 
   const watchedUnitOrganisasi = watch("unit_organisasi");
   const watchedUnitIdRaw = watch("unit_id");
@@ -752,7 +779,7 @@ export function EmployeeForm({
                     <SelectField
                       value={(field.value as string) ?? ""}
                       onChange={field.onChange}
-                      options={STATUS_KONTRAK_OPTIONS}
+                      options={filteredKontrakOptions}
                       placeholder="Pilih status kontrak"
                       allowClear
                     />

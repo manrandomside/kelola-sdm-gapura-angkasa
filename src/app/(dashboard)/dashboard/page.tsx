@@ -137,9 +137,9 @@ export default function DashboardPage() {
       </div>
 
       {/* Row 1: Main stat cards */}
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
         {statsLoading || !stats ? (
-          Array.from({ length: 5 }).map((_, i) => (
+          Array.from({ length: 6 }).map((_, i) => (
             <StatCardSkeleton key={`s1-${i}`} />
           ))
         ) : (
@@ -157,10 +157,16 @@ export default function DashboardPage() {
               color="blue"
             />
             <StatCard
+              title="PKWT"
+              value={stats.pkwt}
+              icon={UserCog}
+              color="violet"
+            />
+            <StatCard
               title="TAD"
               value={stats.tad}
               icon={UserCog}
-              color="violet"
+              color="orange"
             />
             <StatCard
               title="Aktif"
@@ -178,25 +184,18 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Row 2: TAD breakdown */}
+      {/* Row 2: TAD breakdown (Paket SDM + Paket Pekerjaan only) */}
       <div>
         <h2 className="mb-3 text-sm font-semibold text-muted-foreground">
           Breakdown TAD
         </h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {statsLoading || !stats ? (
-            Array.from({ length: 3 }).map((_, i) => (
+            Array.from({ length: 2 }).map((_, i) => (
               <StatCardSkeleton key={`s2-${i}`} />
             ))
           ) : (
             <>
-              <StatCard
-                title="PKWT"
-                value={stats.tadPkwt}
-                icon={UserCog}
-                color="violet"
-                compact
-              />
               <StatCard
                 title="Paket SDM"
                 value={stats.tadPaketSdm}

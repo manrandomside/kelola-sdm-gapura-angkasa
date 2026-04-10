@@ -193,7 +193,7 @@ export default function EmployeeDetailPage({ params }: EmployeeDetailPageProps) 
             Administrasi
           </TabsTrigger>
           <TabsTrigger value="fisik" className="h-9 px-4">
-            Fisik & Seragam
+            Data Seragam
           </TabsTrigger>
         </TabsList>
 

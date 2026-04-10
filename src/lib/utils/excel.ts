@@ -8,6 +8,7 @@ import {
   PROVIDER_OPTIONS,
   STATUS_KERJA_OPTIONS,
   STATUS_KONTRAK_OPTIONS,
+  STATUS_KONTRAK_TO_PEGAWAI,
   STATUS_PEGAWAI_OPTIONS,
   UNIT_ORGANISASI_NORMALIZE,
   UNIT_ORGANISASI_OPTIONS,
@@ -509,6 +510,14 @@ export function normalizeRow(raw: RawRow): NormalizeRowResult {
 
     // Default: clean string.
     (data as Record<NormalizedField, unknown>)[field] = cleanString(rawValue);
+  }
+
+  // Derive status_pegawai from status_kontrak if available (PKWT is NOT TAD).
+  if (data.status_kontrak) {
+    const derived = STATUS_KONTRAK_TO_PEGAWAI[data.status_kontrak];
+    if (derived) {
+      data.status_pegawai = derived;
+    }
   }
 
   return { data, invalidDateFields };

@@ -30,6 +30,7 @@ export interface EmployeeListPagination {
 export interface EmployeeListStatistics {
   total: number;
   pegawaiTetap: number;
+  pkwt: number;
   tad: number;
   aktif: number;
   nonAktif: number;

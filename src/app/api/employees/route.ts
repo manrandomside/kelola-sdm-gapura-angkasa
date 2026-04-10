@@ -40,6 +40,7 @@ interface EmployeeListItem {
 interface EmployeeStatistics {
   total: number;
   pegawaiTetap: number;
+  pkwt: number;
   tad: number;
   aktif: number;
   nonAktif: number;
@@ -167,6 +168,7 @@ export async function GET(request: Request) {
         .select({
           total: count(),
           pegawaiTetap: sql<number>`count(*) filter (where ${employee.status_pegawai} = 'PEGAWAI TETAP')`,
+          pkwt: sql<number>`count(*) filter (where ${employee.status_pegawai} = 'PKWT')`,
           tad: sql<number>`count(*) filter (where ${employee.status_pegawai} = 'TAD')`,
           aktif: sql<number>`count(*) filter (where ${employee.status_kerja} = 'Aktif')`,
           nonAktif: sql<number>`count(*) filter (where ${employee.status_kerja} = 'Non Aktif')`,
@@ -182,6 +184,7 @@ export async function GET(request: Request) {
     const statistics: EmployeeStatistics = {
       total: Number(statsRow?.total ?? 0),
       pegawaiTetap: Number(statsRow?.pegawaiTetap ?? 0),
+      pkwt: Number(statsRow?.pkwt ?? 0),
       tad: Number(statsRow?.tad ?? 0),
       aktif: Number(statsRow?.aktif ?? 0),
       nonAktif: Number(statsRow?.nonAktif ?? 0),

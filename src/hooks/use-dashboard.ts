@@ -10,9 +10,9 @@ import type { ApiResponse } from "@/types/api";
 export interface DashboardStatistics {
   total: number;
   pegawaiTetap: number;
+  pkwt: number;
   tad: number;
   tadPaketPekerjaan: number;
-  tadPkwt: number;
   tadPaketSdm: number;
   aktif: number;
   nonAktif: number;

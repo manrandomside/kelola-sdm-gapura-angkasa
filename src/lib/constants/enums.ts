@@ -3,15 +3,16 @@
 // Enum TIDAK didefinisikan sebagai PostgreSQL CREATE TYPE agar import dari
 // sistem legacy tetap seamless; validasi dilakukan di level aplikasi (Zod).
 
-// Status pegawai (hanya 2 nilai di CSV)
+// Status pegawai (3 nilai — PKWT berdiri sendiri, BUKAN bagian TAD)
 export const STATUS_PEGAWAI_OPTIONS = [
   "PEGAWAI TETAP",
+  "PKWT",
   "TAD",
 ] as const;
 export type StatusPegawai = (typeof STATUS_PEGAWAI_OPTIONS)[number];
 
-// Status kontrak (FIELD BARU — memecah detail TAD)
-// Hubungan: PEGAWAI TETAP -> PEGAWAI TETAP, TAD -> PAKET PEKERJAAN / PAKET SDM / PKWT
+// Status kontrak (detail dari status_pegawai)
+// Mapping: PEGAWAI TETAP -> PEGAWAI TETAP, PKWT -> PKWT, TAD -> PAKET SDM / PAKET PEKERJAAN
 export const STATUS_KONTRAK_OPTIONS = [
   "PEGAWAI TETAP",
   "PKWT",
@@ -19,6 +20,22 @@ export const STATUS_KONTRAK_OPTIONS = [
   "PAKET PEKERJAAN",
 ] as const;
 export type StatusKontrak = (typeof STATUS_KONTRAK_OPTIONS)[number];
+
+// Mapping status_kontrak ke status_pegawai.
+// PKWT BUKAN bagian TAD — ini perubahan penting.
+export const STATUS_KONTRAK_TO_PEGAWAI: Record<string, StatusPegawai> = {
+  "PEGAWAI TETAP": "PEGAWAI TETAP",
+  PKWT: "PKWT",
+  "PAKET SDM": "TAD",
+  "PAKET PEKERJAAN": "TAD",
+};
+
+// Mapping status_pegawai ke opsi status_kontrak yang valid (cascading dropdown).
+export const STATUS_PEGAWAI_TO_KONTRAK: Record<string, readonly string[]> = {
+  "PEGAWAI TETAP": ["PEGAWAI TETAP"],
+  PKWT: ["PKWT"],
+  TAD: ["PAKET SDM", "PAKET PEKERJAAN"],
+};
 
 // Status kerja (PERHATIAN: 'Non Aktif' pakai spasi, bukan dash)
 export const STATUS_KERJA_OPTIONS = [

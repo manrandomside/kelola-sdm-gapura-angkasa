@@ -431,9 +431,9 @@ src/
 - [x] User management: reset password to NIP
 
 ### Phase 5: Polish & Revisions
-- [ ] Revisi: Label tab "Fisik & Seragam" -> "Data Seragam"
-- [ ] Revisi: PKWT bukan TAD (status_pegawai 3 nilai, update enum, dashboard, filter, import logic)
-- [ ] Revisi: Update data existing di DB (status_pegawai PKWT)
+- [x] Revisi: Label tab "Fisik & Seragam" -> "Data Seragam"
+- [x] Revisi: PKWT bukan TAD (status_pegawai 3 nilai, update enum, dashboard, filter, import logic)
+- [ ] Revisi: Update data existing di DB (status_pegawai PKWT) — migration endpoint ready: POST /api/migrations/fix-pkwt
 - [ ] Dashboard: chart Jenis Kelamin (pie/donut)
 - [ ] Dashboard: chart Komposisi Usia SDM (bar)
 - [ ] Dashboard: chart Kelompok Jabatan (bar)

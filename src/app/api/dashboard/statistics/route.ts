@@ -11,9 +11,9 @@ import type { ApiResponse } from "@/types/api";
 interface DashboardStatistics {
   total: number;
   pegawaiTetap: number;
+  pkwt: number;
   tad: number;
   tadPaketPekerjaan: number;
-  tadPkwt: number;
   tadPaketSdm: number;
   aktif: number;
   nonAktif: number;
@@ -48,9 +48,9 @@ export async function GET(): Promise<NextResponse<ApiResponse<DashboardStatistic
       .select({
         total: count(),
         pegawaiTetap: sql<number>`count(*) filter (where ${employee.status_pegawai} = 'PEGAWAI TETAP')`,
+        pkwt: sql<number>`count(*) filter (where ${employee.status_pegawai} = 'PKWT')`,
         tad: sql<number>`count(*) filter (where ${employee.status_pegawai} = 'TAD')`,
         tadPaketPekerjaan: sql<number>`count(*) filter (where ${employee.status_kontrak} = 'PAKET PEKERJAAN')`,
-        tadPkwt: sql<number>`count(*) filter (where ${employee.status_kontrak} = 'PKWT')`,
         tadPaketSdm: sql<number>`count(*) filter (where ${employee.status_kontrak} = 'PAKET SDM')`,
         aktif: sql<number>`count(*) filter (where ${employee.status_kerja} = 'Aktif')`,
         nonAktif: sql<number>`count(*) filter (where ${employee.status_kerja} = 'Non Aktif')`,
@@ -64,9 +64,9 @@ export async function GET(): Promise<NextResponse<ApiResponse<DashboardStatistic
     const statistics: DashboardStatistics = {
       total: Number(row?.total ?? 0),
       pegawaiTetap: Number(row?.pegawaiTetap ?? 0),
+      pkwt: Number(row?.pkwt ?? 0),
       tad: Number(row?.tad ?? 0),
       tadPaketPekerjaan: Number(row?.tadPaketPekerjaan ?? 0),
-      tadPkwt: Number(row?.tadPkwt ?? 0),
       tadPaketSdm: Number(row?.tadPaketSdm ?? 0),
       aktif: Number(row?.aktif ?? 0),
       nonAktif: Number(row?.nonAktif ?? 0),

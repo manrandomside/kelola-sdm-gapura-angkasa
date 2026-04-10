@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { activityLog, employee, importLog, user } from "@/lib/db/schema";
 import { createClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { KODE_ORGANISASI_MAP } from "@/lib/constants/enums";
+import { KODE_ORGANISASI_MAP, STATUS_KONTRAK_TO_PEGAWAI } from "@/lib/constants/enums";
 import { logger } from "@/lib/utils/logger";
 
 import type { ApiResponse } from "@/types/api";
@@ -87,7 +87,9 @@ function buildEmployeeValues(data: NormalizedRow) {
     kota_domisili: data.kota_domisili,
     handphone: data.handphone,
     email: data.email,
-    status_pegawai: data.status_pegawai,
+    status_pegawai: data.status_kontrak
+      ? (STATUS_KONTRAK_TO_PEGAWAI[data.status_kontrak] ?? data.status_pegawai)
+      : data.status_pegawai,
     status_kontrak: data.status_kontrak,
     status_kerja: data.status_kerja,
     provider: data.provider,

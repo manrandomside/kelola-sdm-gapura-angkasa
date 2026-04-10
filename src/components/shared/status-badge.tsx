@@ -11,7 +11,8 @@ const STATUS_KERJA_STYLES: Record<string, string> = {
 
 const STATUS_PEGAWAI_STYLES: Record<string, string> = {
   "PEGAWAI TETAP": "bg-blue-100 text-blue-700",
-  TAD: "bg-violet-100 text-violet-700",
+  PKWT: "bg-violet-100 text-violet-700",
+  TAD: "bg-orange-100 text-orange-700",
 };
 
 const STATUS_KONTRAK_STYLES: Record<string, string> = {
