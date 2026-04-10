@@ -434,10 +434,10 @@ src/
 - [x] Revisi: Label tab "Fisik & Seragam" -> "Data Seragam"
 - [x] Revisi: PKWT bukan TAD (status_pegawai 3 nilai, update enum, dashboard, filter, import logic)
 - [x] Revisi: Update data existing di DB (status_pegawai PKWT) — migration endpoint ready: POST /api/migrations/fix-pkwt
-- [ ] Dashboard: chart Jenis Kelamin (pie/donut)
-- [ ] Dashboard: chart Komposisi Usia SDM (bar)
-- [ ] Dashboard: chart Kelompok Jabatan (bar)
-- [ ] Dashboard: chart Pegawai Tetap & PKWT & TAD per Unit Organisasi (stacked bar)
+- [x] Dashboard: chart Jenis Kelamin (pie/donut)
+- [x] Dashboard: chart Komposisi Usia SDM (bar)
+- [x] Dashboard: chart Kelompok Jabatan (bar)
+- [x] Dashboard: chart Pegawai Tetap & PKWT & TAD per Unit Organisasi (stacked bar)
 - [ ] Dashboard: rekap SDM per jabatan (pivot table ringkas)
 - [ ] Halaman baru: Rekap SDM (/rekap-sdm) -- pivot table lengkap + sort + search + export
 - [ ] Monitoring kontrak: color coding di daftar karyawan

@@ -15,10 +15,14 @@ import {
 import Link from "next/link";
 import { useMemo } from "react";
 
+import { AgeChart } from "@/components/dashboard/age-chart";
 import { BarChartCard } from "@/components/dashboard/bar-chart-card";
 import { DonutChartCard } from "@/components/dashboard/donut-chart";
+import { GenderChart } from "@/components/dashboard/gender-chart";
+import { PositionGroupChart } from "@/components/dashboard/position-group-chart";
 import { RecentActivitiesCard } from "@/components/dashboard/recent-activities";
 import { StatCard } from "@/components/dashboard/stat-card";
+import { StatusOrgChart } from "@/components/dashboard/status-org-chart";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
@@ -215,12 +219,12 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Row 3: Donut + Unit Organisasi Bar */}
+      {/* Chart Row 1: Status Kontrak Donut + Jenis Kelamin Donut */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {chartsLoading || !charts ? (
           <>
             <ChartSkeleton height={280} />
-            <ChartSkeleton height={320} />
+            <ChartSkeleton height={280} />
           </>
         ) : (
           <>
@@ -228,33 +232,63 @@ export default function DashboardPage() {
               title="Distribusi Status Kontrak"
               data={charts.statusKontrak}
             />
+            <GenderChart data={charts.jenisKelamin} />
+          </>
+        )}
+      </div>
+
+      {/* Chart Row 2: Unit Organisasi Bar + Komposisi Usia Bar */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {chartsLoading || !charts ? (
+          <>
+            <ChartSkeleton height={320} />
+            <ChartSkeleton height={300} />
+          </>
+        ) : (
+          <>
             <BarChartCard
               title="Karyawan per Unit Organisasi"
               data={charts.unitOrganisasi}
               layout="vertical"
               height={320}
             />
+            <AgeChart data={charts.komposisiUsia} />
           </>
         )}
       </div>
 
-      {/* Row 4: Provider Bar + Recent Activities */}
+      {/* Chart Row 3: Provider Bar + Kelompok Jabatan Bar */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {chartsLoading || !charts ? (
-          <ChartSkeleton height={360} />
+          <>
+            <ChartSkeleton height={360} />
+            <ChartSkeleton height={320} />
+          </>
         ) : (
-          <BarChartCard
-            title="Karyawan per Provider"
-            data={charts.provider}
-            layout="vertical"
-            height={360}
-          />
+          <>
+            <BarChartCard
+              title="Karyawan per Provider"
+              data={charts.provider}
+              layout="vertical"
+              height={360}
+            />
+            <PositionGroupChart data={charts.kelompokJabatan} />
+          </>
         )}
-        <RecentActivitiesCard
-          activities={activities}
-          isLoading={activitiesLoading}
-        />
       </div>
+
+      {/* Chart Row 4: Stacked Bar — Status per Organisasi (full width) */}
+      {chartsLoading || !charts ? (
+        <ChartSkeleton height={320} />
+      ) : (
+        <StatusOrgChart data={charts.statusPerOrganisasi} />
+      )}
+
+      {/* Recent Activities */}
+      <RecentActivitiesCard
+        activities={activities}
+        isLoading={activitiesLoading}
+      />
 
       {/* Error states */}
       {(statsQuery.isError || chartsQuery.isError || activitiesQuery.isError) && (

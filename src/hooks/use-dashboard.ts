@@ -25,11 +25,39 @@ export interface ChartDataPoint {
   value: number;
 }
 
+export interface GenderDataPoint {
+  label: string;
+  value: string;
+  count: number;
+  percentage: number;
+}
+
+export interface AgeRangePoint {
+  range: string;
+  count: number;
+}
+
+export interface PositionGroupPoint {
+  label: string;
+  count: number;
+}
+
+export interface StatusPerOrgPoint {
+  kode: string;
+  pegawaiTetap: number;
+  pkwt: number;
+  tad: number;
+}
+
 export interface DashboardCharts {
   statusKontrak: ChartDataPoint[];
   statusPegawai: ChartDataPoint[];
   unitOrganisasi: ChartDataPoint[];
   provider: ChartDataPoint[];
+  jenisKelamin: GenderDataPoint[];
+  komposisiUsia: AgeRangePoint[];
+  kelompokJabatan: PositionGroupPoint[];
+  statusPerOrganisasi: StatusPerOrgPoint[];
 }
 
 export interface RecentActivity {
