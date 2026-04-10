@@ -345,6 +345,18 @@ src/
 
 ---
 
+### Deployment
+
+| Item | Detail |
+|------|--------|
+| Hosting | Vercel (Hobby/Free) |
+| URL Production | https://kelola-sdm-gapura-angkasa.vercel.app |
+| Auto-deploy | Ya, setiap push ke branch main |
+| Database | Supabase (Singapore region) |
+| Login Super Admin | NIP: SUPERADMIN, Password: SUPERADMIN |
+
+---
+
 ## Status Progress
 
 ### Phase 1: Foundation
@@ -420,9 +432,35 @@ src/
 
 - Data CSV memiliki inkonsistensi yang HARUS di-handle saat import: format tanggal campuran (DD/MM/YYYY, YYYY-MM-DD, DD-MM-YYYY), status_pegawai 2 nilai vs status_kontrak 4 nilai, field kosong untuk pegawai non-tetap, casing tidak konsisten pada unit_organisasi
 
-<!-- Contoh format:
-### 2026-04-08: Setup Supabase
-- Supabase project ID: xxx
+### 2026-04-09: Deployment & Production
+- Vercel project: kelola-sdm-gapura-angkasa
+- Production URL: https://kelola-sdm-gapura-angkasa.vercel.app
+- Auto-deploy dari branch main setiap git push
+- Vercel plan: Hobby (free tier, API route timeout 60 detik)
+- PENTING: Import data TIDAK bisa dilakukan via production (timeout 60s untuk 1414 row). Harus import via localhost karena tidak ada timeout limit. Database Supabase sama, jadi data yang di-import via localhost langsung muncul di production.
+
+### 2026-04-09: Supabase Configuration
+- Project ID: ccmzrkelesbxdltgcnqf
 - Region: Southeast Asia (Singapore)
-- Catatan: ...
--->
+- Auth: Email provider enabled, Confirm email disabled, semua OAuth disabled
+- Site URL: https://kelola-sdm-gapura-angkasa.vercel.app
+- Redirect URLs: https://kelola-sdm-gapura-angkasa.vercel.app/**, http://localhost:3000/**
+- Direct DB connection (port 5432) TIDAK bisa resolve tanpa IPv4 add-on. Semua koneksi pakai pooler (DATABASE_URL port 6543)
+- Login menggunakan format email proxy: {nip}@gapura.internal
+
+### 2026-04-09: Import Data
+- Import 1.414 row dari employee-sample.csv via localhost
+- Hasil: 1.273 berhasil, 135 gagal (kemungkinan duplicate email/NIK constraint), 1.132 akun baru dibuat
+- Untuk reset data: jalankan SQL di Supabase SQL Editor:
+  DELETE FROM activity_log; DELETE FROM import_log; DELETE FROM "user" WHERE nip != 'SUPERADMIN'; DELETE FROM employee;
+
+### 2026-04-09: Logo & PWA
+- Logo file: public/images/gapuraangkasa.jpg
+- PWA manifest: public/manifest.json (installable app, standalone mode)
+- Favicon dan icon variants di-generate via scripts/generate-icons.mjs
+- Logo ditampilkan di sidebar dan login page
+
+### 2026-04-09: Known Issues
+- 135 row gagal import: kemungkinan duplicate email/NIK di CSV. Perlu investigasi lebih lanjut
+- Vercel Hobby timeout 60s: import bulk harus via localhost
+- Button warning di console (nativeButton prop): bukan blocking, hanya warning dari shadcn/ui Base UI migration
