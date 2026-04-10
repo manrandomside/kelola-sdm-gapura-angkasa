@@ -15,6 +15,7 @@ interface ChartDataPoint {
 
 interface DashboardCharts {
   statusKontrak: ChartDataPoint[];
+  statusPegawai: ChartDataPoint[];
   unitOrganisasi: ChartDataPoint[];
   provider: ChartDataPoint[];
 }
@@ -43,7 +44,7 @@ export async function GET(): Promise<NextResponse<ApiResponse<DashboardCharts>>>
   try {
     const activeFilter = eq(employee.status, "active");
 
-    const [statusKontrakRows, unitOrgRows, providerRows] = await Promise.all([
+    const [statusKontrakRows, statusPegawaiRows, unitOrgRows, providerRows] = await Promise.all([
       db
         .select({
           name: employee.status_kontrak,
@@ -52,6 +53,16 @@ export async function GET(): Promise<NextResponse<ApiResponse<DashboardCharts>>>
         .from(employee)
         .where(and(activeFilter, isNotNull(employee.status_kontrak)))
         .groupBy(employee.status_kontrak)
+        .orderBy(desc(sql`count(*)`)),
+
+      db
+        .select({
+          name: employee.status_pegawai,
+          value: count(),
+        })
+        .from(employee)
+        .where(and(activeFilter, isNotNull(employee.status_pegawai)))
+        .groupBy(employee.status_pegawai)
         .orderBy(desc(sql`count(*)`)),
 
       db
@@ -82,6 +93,7 @@ export async function GET(): Promise<NextResponse<ApiResponse<DashboardCharts>>>
 
     const data: DashboardCharts = {
       statusKontrak: toPoints(statusKontrakRows),
+      statusPegawai: toPoints(statusPegawaiRows),
       unitOrganisasi: toPoints(unitOrgRows),
       provider: toPoints(providerRows),
     };

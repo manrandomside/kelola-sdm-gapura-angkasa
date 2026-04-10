@@ -433,7 +433,7 @@ src/
 ### Phase 5: Polish & Revisions
 - [x] Revisi: Label tab "Fisik & Seragam" -> "Data Seragam"
 - [x] Revisi: PKWT bukan TAD (status_pegawai 3 nilai, update enum, dashboard, filter, import logic)
-- [ ] Revisi: Update data existing di DB (status_pegawai PKWT) — migration endpoint ready: POST /api/migrations/fix-pkwt
+- [x] Revisi: Update data existing di DB (status_pegawai PKWT) — migration endpoint ready: POST /api/migrations/fix-pkwt
 - [ ] Dashboard: chart Jenis Kelamin (pie/donut)
 - [ ] Dashboard: chart Komposisi Usia SDM (bar)
 - [ ] Dashboard: chart Kelompok Jabatan (bar)
@@ -636,6 +636,14 @@ src/
 - PWA manifest: public/manifest.json (installable app, standalone mode)
 - Favicon dan icon variants di-generate via scripts/generate-icons.mjs
 - Logo ditampilkan di sidebar dan login page
+
+### 2026-04-10: PKWT Migration
+- Menjalankan migration fix-pkwt untuk update status_pegawai karyawan PKWT
+- Sebelumnya: PKWT masuk kategori TAD (status_pegawai='TAD')
+- Sesudah: PKWT berdiri sendiri (status_pegawai='PKWT')
+- Dashboard stat cards dan chart sudah diupdate untuk 3 status_pegawai
+- Charts API sekarang return statusPegawai (3 kategori) dan statusKontrak (4 kategori)
+- StatCard mendukung warna baru: amber (Paket SDM) dan pink (Paket Pekerjaan)
 
 ### 2026-04-09: Known Issues
 - 135 row gagal import: kemungkinan duplicate email/NIK di CSV. Perlu investigasi lebih lanjut

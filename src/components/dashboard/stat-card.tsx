@@ -9,7 +9,9 @@ export type StatCardColor =
   | "violet"
   | "orange"
   | "red"
-  | "gray";
+  | "gray"
+  | "amber"
+  | "pink";
 
 interface StatCardProps {
   title: string;
@@ -28,6 +30,8 @@ const COLOR_BG: Record<StatCardColor, string> = {
   orange: "bg-orange-50 text-orange-600",
   red: "bg-red-50 text-red-600",
   gray: "bg-gray-100 text-gray-600",
+  amber: "bg-amber-50 text-amber-600",
+  pink: "bg-pink-50 text-pink-600",
 };
 
 const COLOR_TEXT: Record<StatCardColor, string> = {
@@ -38,6 +42,8 @@ const COLOR_TEXT: Record<StatCardColor, string> = {
   orange: "text-orange-700",
   red: "text-red-700",
   gray: "text-gray-700",
+  amber: "text-amber-700",
+  pink: "text-pink-700",
 };
 
 export function StatCard({

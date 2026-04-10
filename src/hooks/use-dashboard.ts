@@ -27,6 +27,7 @@ export interface ChartDataPoint {
 
 export interface DashboardCharts {
   statusKontrak: ChartDataPoint[];
+  statusPegawai: ChartDataPoint[];
   unitOrganisasi: ChartDataPoint[];
   provider: ChartDataPoint[];
 }

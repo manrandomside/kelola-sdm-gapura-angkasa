@@ -200,14 +200,14 @@ export default function DashboardPage() {
                 title="Paket SDM"
                 value={stats.tadPaketSdm}
                 icon={UserCog}
-                color="orange"
+                color="amber"
                 compact
               />
               <StatCard
                 title="Paket Pekerjaan"
                 value={stats.tadPaketPekerjaan}
                 icon={UserCog}
-                color="primary"
+                color="pink"
                 compact
               />
             </>
