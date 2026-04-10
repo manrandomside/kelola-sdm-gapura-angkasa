@@ -55,7 +55,8 @@ Sistem Manajemen Data SDM internal PT Gapura Angkasa (ground handling, Bandar Ud
 ```
 id UUID PK, supabase_auth_id UUID UNIQUE, nip VARCHAR(30) UNIQUE NOT NULL,
 email VARCHAR(255), full_name VARCHAR(200) NOT NULL, role VARCHAR(20) DEFAULT 'staff',
-status VARCHAR(20) DEFAULT 'active', employee_id BIGINT FK->employee, last_login_at TIMESTAMPTZ
+status VARCHAR(20) DEFAULT 'active', employee_id BIGINT FK->employee, last_login_at TIMESTAMPTZ,
+provider VARCHAR(100)             -- BARU (lihat Penambahan 6): NULL/Gapura = akses semua, lainnya = scoped
 ```
 
 ### `employee` (flat, 45+ fields, TABEL UTAMA)
@@ -64,7 +65,7 @@ id BIGSERIAL PK, no INT, nip VARCHAR(30) UNIQUE NOT NULL, nik VARCHAR(20) UNIQUE
 nama_lengkap VARCHAR(200) NOT NULL, jenis_kelamin VARCHAR(10), tempat_lahir, tanggal_lahir DATE,
 usia INT, alamat TEXT, kota_domisili, handphone, email VARCHAR(255) UNIQUE,
 
-status_pegawai VARCHAR(50),       -- 'PEGAWAI TETAP' | 'TAD'
+status_pegawai VARCHAR(50),       -- 'PEGAWAI TETAP' | 'PKWT' | 'TAD' (lihat Revisi 2)
 status_kontrak VARCHAR(50),       -- 'PEGAWAI TETAP' | 'PKWT' | 'PAKET SDM' | 'PAKET PEKERJAAN'
 status_kerja VARCHAR(20),         -- 'Aktif' | 'Non Aktif' | 'Pensiun' | 'Mutasi'
 provider VARCHAR(100),            -- 10 providers
@@ -173,9 +174,20 @@ POST /api/export               { filter?, columns? } -> file .xlsx
 
 ### Dashboard
 ```
-GET /api/dashboard/statistics  -> { total, pegawaiTetap, tad, tadPaketPekerjaan, tadPkwt, tadPaketSdm, aktif, nonAktif }
-GET /api/dashboard/charts      -> { statusKontrak[], unitOrganisasi[], provider[] }
+GET /api/dashboard/statistics  -> { total, pegawaiTetap, pkwt, tad, aktif, nonAktif } (lihat Revisi 2)
+GET /api/dashboard/charts      -> { statusKontrak[], unitOrganisasi[], provider[], jenisKelamin[], usia[], kelompokJabatan[], statusPerUnit[] } (lihat Revisi 3)
 GET /api/dashboard/activities  -> { activities[] }
+```
+
+### Rekap SDM (BARU - lihat Penambahan 4)
+```
+GET  /api/rekap-sdm            -> { data[], summary }
+POST /api/rekap-sdm/export     -> file .xlsx
+```
+
+### Monitoring Kontrak (BARU - lihat Penambahan 5)
+```
+POST /api/cron/update-contract-status  -> { updated_count, details[] }
 ```
 
 ### Organization & Units
@@ -259,6 +271,7 @@ src/
         create/page.tsx
         [id]/page.tsx               # detail
         [id]/edit/page.tsx
+      rekap-sdm/page.tsx              # BARU (Penambahan 4)
       import/page.tsx
       export/page.tsx
       users/page.tsx                # super_admin only
@@ -277,6 +290,9 @@ src/
       import/preview/route.ts
       import/execute/route.ts
       export/route.ts
+      rekap-sdm/route.ts            # BARU (Penambahan 4)
+      rekap-sdm/export/route.ts     # BARU (Penambahan 4)
+      cron/update-contract-status/route.ts  # BARU (Penambahan 5)
       organizations/route.ts
       units/route.ts
       units/[id]/sub-units/route.ts
@@ -287,6 +303,7 @@ src/
     employees/                      # EmployeeTable, EmployeeForm, EmployeeDetail
     dashboard/                      # StatCard, DonutChart, BarChart
     import-export/                  # ImportWizard, ExportDialog
+    rekap-sdm/                      # RekapTable (BARU)
     users/                          # UserTable, UserForm
     ui/                             # shadcn/ui
     shared/                         # LoadingSpinner, EmptyState, StatusBadge, SearchInput
@@ -413,16 +430,176 @@ src/
 - [x] User management: edit role/status
 - [x] User management: reset password to NIP
 
-### Phase 5: Polish
+### Phase 5: Polish & Revisions
+- [ ] Revisi: Label tab "Fisik & Seragam" -> "Data Seragam"
+- [ ] Revisi: PKWT bukan TAD (status_pegawai 3 nilai, update enum, dashboard, filter, import logic)
+- [ ] Revisi: Update data existing di DB (status_pegawai PKWT)
+- [ ] Dashboard: chart Jenis Kelamin (pie/donut)
+- [ ] Dashboard: chart Komposisi Usia SDM (bar)
+- [ ] Dashboard: chart Kelompok Jabatan (bar)
+- [ ] Dashboard: chart Pegawai Tetap & PKWT & TAD per Unit Organisasi (stacked bar)
+- [ ] Dashboard: rekap SDM per jabatan (pivot table ringkas)
+- [ ] Halaman baru: Rekap SDM (/rekap-sdm) -- pivot table lengkap + sort + search + export
+- [ ] Monitoring kontrak: color coding di daftar karyawan
+- [ ] Monitoring kontrak: tab Aktif / Akan Berakhir / Sudah Berakhir
+- [ ] Monitoring kontrak: cron job auto update status Non Aktif
+- [ ] Monitoring kontrak: badge sisa kontrak di detail karyawan
+- [ ] Monitoring kontrak: stat card "Kontrak Akan Berakhir" di dashboard
+- [ ] Multi Super Admin: field provider di tabel user
+- [ ] Multi Super Admin: filter query berdasarkan provider
+- [ ] Multi Super Admin: update RLS policy
+- [ ] Multi Super Admin: seed 10 akun Super Admin per provider
+- [ ] Multi Super Admin: UI user management update
 - [ ] Responsive: tablet layout
 - [ ] Responsive: mobile layout
 - [ ] Loading states (skeleton/spinner)
 - [ ] Empty states with illustration
-- [ ] Toast notifications
+- [ ] Toast notifications improvement
 - [ ] Error boundaries
 - [ ] Change password page
-- [ ] RLS policies verified
 - [ ] GitHub Actions: Supabase keep-alive cron
+
+---
+
+## Revisi & Penambahan (Phase 5+)
+
+> Daftar revisi dan fitur baru yang harus diimplementasikan. Gunakan sebagai referensi saat mengerjakan task.
+
+### Revisi 1: Label Tab "Fisik & Seragam" -> "Data Seragam"
+- Di halaman detail karyawan (`/employees/[id]`), tab terakhir yang sebelumnya bernama "Fisik & Seragam" diganti menjadi **"Data Seragam"**
+- Perubahan hanya di label tab, konten tetap sama (tinggi badan, berat badan, jenis sepatu, ukuran sepatu, seragam)
+- **File**: `src/app/(dashboard)/employees/[id]/page.tsx`
+
+### Revisi 2: PKWT Bukan Bagian TAD
+- **PERUBAHAN PENTING**: PKWT tidak termasuk kategori TAD
+- `status_pegawai` sekarang punya **3 nilai** (sebelumnya 2):
+  - `'PEGAWAI TETAP'`
+  - `'PKWT'`
+  - `'TAD'`
+- TAD hanya mencakup 2 `status_kontrak`: `'PAKET SDM'` dan `'PAKET PEKERJAAN'`
+- PKWT berdiri sendiri, bukan sub-kategori TAD
+- **Mapping status_kontrak -> status_pegawai:**
+  | status_kontrak | status_pegawai |
+  |----------------|----------------|
+  | PEGAWAI TETAP | PEGAWAI TETAP |
+  | PKWT | PKWT |
+  | PAKET SDM | TAD |
+  | PAKET PEKERJAAN | TAD |
+- **Yang harus berubah:**
+  1. Enum `STATUS_PEGAWAI_OPTIONS` di `lib/constants/enums.ts`: tambah `'PKWT'`
+  2. Dashboard stat cards: Total | Pegawai Tetap | PKWT | TAD | Aktif | Non Aktif
+  3. Breakdown TAD hanya 2: Paket SDM, Paket Pekerjaan (PKWT tidak masuk breakdown TAD)
+  4. Chart distribusi status kontrak harus mencerminkan 3 kategori
+  5. Filter di employee list harus menyediakan 3 opsi `status_pegawai`
+  6. Import logic: saat import CSV, mapping `status_kontrak` -> `status_pegawai` harus mengikuti aturan baru
+  7. Data existing di database perlu di-update: karyawan dengan `status_kontrak='PKWT'` harus diubah `status_pegawai` dari `'TAD'` menjadi `'PKWT'`
+
+### Revisi 3: Dashboard Charts Tambahan
+- Tambahkan 4 chart baru di dashboard (total jadi **7 chart**):
+  1. **Existing**: Distribusi Status Kontrak (donut) -- update untuk 3 kategori
+  2. **Existing**: Karyawan per Unit Organisasi (bar)
+  3. **Existing**: Karyawan per Provider (bar)
+  4. **BARU**: Jenis Kelamin (pie/donut) -- L vs P dengan jumlah dan persentase
+  5. **BARU**: Komposisi Usia SDM (bar chart) -- range: 18-25, 26-35, 36-45, 46-55, 56+
+  6. **BARU**: Kelompok Jabatan (bar chart) -- ACCOUNT EXECUTIVE/AE, EGM, GM, MANAGER, STAFF, SUPERVISOR, NON
+  7. **BARU**: Pegawai Tetap & TAD & PKWT per Unit Organisasi (stacked bar) -- breakdown 3 status per kode organisasi
+- Layout harus responsive, menyesuaikan ukuran layar
+- Design chart bebas tapi harus profesional dan clean
+
+### Penambahan 4: Rekap SDM per Jabatan (Pivot Table)
+- Tabel yang menampilkan jumlah SDM per Nama Jabatan, dipecah per Status Pegawai (Pegawai Tetap / PKWT / TAD) dengan kolom Grand Total
+- **Ditempatkan di 2 lokasi:**
+  1. **Di halaman Dashboard**: section baru di bawah charts, bisa dalam bentuk ringkas/collapsible
+  2. **Halaman baru di sidebar**: di bawah menu "Management Karyawan", buat menu baru **"Rekap SDM"** (route: `/rekap-sdm`)
+- **Halaman Rekap SDM** lengkap dengan:
+  - Tabel pivot: baris = Nama Jabatan, kolom = Pegawai Tetap | PKWT | TAD | Grand Total
+  - Bisa di-sort per kolom
+  - Bisa di-search/filter
+  - Bisa di-export ke Excel
+- **Sidebar menu update:**
+  ```
+  Dashboard
+  Management Karyawan
+    - Daftar Karyawan (/employees)
+    - Tambah Karyawan (/employees/create)
+  Rekap SDM (/rekap-sdm)          <-- BARU
+  Import Data (/import)
+  Export Data (/export)
+  Log Aktivitas (/activity-logs)
+  Management User (/users)         -- super_admin only
+  ```
+- **API endpoint baru:**
+  ```
+  GET /api/rekap-sdm              -> { data: [{ nama_jabatan, pegawai_tetap, pkwt, tad, total }], summary: { pegawai_tetap, pkwt, tad, grand_total } }
+  POST /api/rekap-sdm/export      -> file .xlsx
+  ```
+- **File baru yang perlu dibuat:**
+  - `src/app/(dashboard)/rekap-sdm/page.tsx`
+  - `src/app/api/rekap-sdm/route.ts`
+  - `src/app/api/rekap-sdm/export/route.ts`
+  - `src/components/rekap-sdm/rekap-table.tsx`
+  - `src/components/dashboard/rekap-summary.tsx` (versi ringkas untuk dashboard)
+
+### Penambahan 5: Monitoring Kontrak (Status Aktif / Akan Berakhir / Sudah Berakhir)
+- Fitur monitoring masa kontrak karyawan berdasarkan `tmt_mulai_kerja` dan `tmt_berakhir_kerja`
+- **Color coding** pada daftar karyawan berdasarkan sisa kontrak:
+  - Hijau: kontrak masih lama (> 90 hari dari sekarang)
+  - Kuning/Amber: kontrak akan berakhir (30-90 hari dari sekarang)
+  - Merah: kontrak sangat dekat berakhir (< 30 hari dari sekarang)
+  - Abu-abu: kontrak sudah berakhir (`tmt_berakhir_kerja` < hari ini)
+- **Tab/toggle** di halaman Management Karyawan (`/employees`):
+  - "Aktif" -- karyawan dengan `status_kerja = 'Aktif'` dan kontrak belum berakhir (default view)
+  - "Akan Berakhir" -- karyawan yang kontraknya berakhir dalam 90 hari ke depan
+  - "Sudah Berakhir" -- karyawan yang kontraknya sudah lewat / status Non Aktif
+- **Auto update status (Cron Job):**
+  - Scheduled job jalan setiap hari jam 00:00 WITA
+  - Cek semua karyawan: jika `tmt_berakhir_kerja < hari ini` DAN `status_kerja` masih `'Aktif'`, otomatis ubah `status_kerja` menjadi `'Non Aktif'`
+  - Log perubahan di `activity_log` dengan `activity = 'auto_status_update'`
+  - Implementasi via: GitHub Actions cron job yang memanggil API endpoint khusus, atau Supabase pg_cron
+  - Tambahkan activity type baru: `'auto_status_update'` di `ACTIVITY_TYPE_OPTIONS`
+- **Detail karyawan**: tampilkan badge/indicator sisa kontrak dengan warna sesuai threshold
+- **Dashboard**: tambahkan stat card "Kontrak Akan Berakhir (90 hari)" dengan jumlah
+- **API endpoint baru:**
+  ```
+  POST /api/cron/update-contract-status   -> { updated_count, details[] }
+  ```
+- **File baru yang perlu dibuat:**
+  - `src/app/api/cron/update-contract-status/route.ts`
+  - `src/components/employees/contract-badge.tsx`
+
+### Penambahan 6: Multi Super Admin per Provider
+- Tambah field `provider` (`VARCHAR(100)`, nullable) di tabel `user`
+- **Mekanisme akses:**
+  - `super_admin` + provider = `'PT Gapura Angkasa'` (atau NULL) --> akses SEMUA data, CRUD semua karyawan, import/export semua
+  - `super_admin` + provider = [provider lain] --> hanya bisa akses, CRUD, import/export data karyawan dari provider mereka sendiri
+  - `admin` dan `staff` --> tetap seperti sekarang (untuk sekarang tidak ada provider scope)
+- **Filter otomatis:**
+  - Semua query karyawan (list, detail, dashboard, export) harus di-filter berdasarkan provider user yang login
+  - RLS policy di tabel employee perlu di-update untuk mengecek provider user
+  - Dashboard statistik hanya menampilkan data sesuai provider (kecuali Gapura yang lihat semua)
+- **Seed 10 akun Super Admin** (satu per provider dari CSV):
+  | NIP | Password | Provider |
+  |-----|----------|----------|
+  | SUPERADMIN_GAPURA | SUPERADMIN_GAPURA | PT Gapura Angkasa |
+  | SUPERADMIN_AIRBOX | SUPERADMIN_AIRBOX | PT Air Box Personalia |
+  | SUPERADMIN_FINFLEET | SUPERADMIN_FINFLEET | PT Finfleet Teknologi Indonesia |
+  | SUPERADMIN_MITRA | SUPERADMIN_MITRA | PT Mitra Angkasa Perdana |
+  | SUPERADMIN_GRAHA | SUPERADMIN_GRAHA | PT Graha Humanindo Manajemen |
+  | SUPERADMIN_MANDALA | SUPERADMIN_MANDALA | PT Mandala Garda Nusantara |
+  | SUPERADMIN_IAS | SUPERADMIN_IAS | PT IAS Support |
+  | SUPERADMIN_KIDORA | SUPERADMIN_KIDORA | PT Kidora Mandiri Investama |
+  | SUPERADMIN_DUTA | SUPERADMIN_DUTA | PT Duta Griya Sarana |
+  | SUPERADMIN_AEROTRANS | SUPERADMIN_AEROTRANS | PT Aerotrans Wisata |
+- Akun `SUPERADMIN` yang sudah ada tetap dipertahankan sebagai master super admin (provider = PT Gapura Angkasa)
+- **User management**: Super Admin Gapura bisa manage semua user. Super Admin provider lain hanya bisa melihat user dari provider mereka.
+- **Yang harus berubah:**
+  1. Drizzle schema `user` table: tambah kolom `provider`
+  2. Migration baru untuk ALTER TABLE
+  3. Auth session: include `provider` di session data
+  4. Semua API employee/dashboard/export: tambah WHERE filter provider
+  5. Sidebar/TopBar: tampilkan nama provider yang login
+  6. User management page: filter berdasarkan provider
+  7. Seed script: buat 10 akun super admin
 
 ---
 
