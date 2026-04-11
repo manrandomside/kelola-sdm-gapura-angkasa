@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ChevronRight, Pencil, Trash2 } from "lucide-react";
 
+import { ContractBadge } from "@/components/employees/contract-badge";
 import { DeleteEmployeeDialog } from "@/components/employees/delete-employee-dialog";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -17,6 +18,7 @@ import {
   useEmployeeDetail,
 } from "@/hooks/use-employee-detail";
 import { ROUTES } from "@/lib/constants/routes";
+import { formatDateWITA } from "@/lib/utils/date";
 
 interface EmployeeDetailPageProps {
   params: Promise<{ id: string }>;
@@ -146,6 +148,11 @@ export default function EmployeeDetailPage({ params }: EmployeeDetailPageProps) 
             <div className="flex flex-wrap gap-2 pt-1">
               <StatusBadge type="status_kerja" value={emp.status_kerja} />
               <StatusBadge type="status_pegawai" value={emp.status_pegawai} />
+              <ContractBadge
+                tmtBerakhirKerja={emp.tmt_berakhir_kerja}
+                size="md"
+                showLabel
+              />
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -303,11 +310,25 @@ export default function EmployeeDetailPage({ params }: EmployeeDetailPageProps) 
                 value={emp.tmt_mulai_kerja}
                 type="date"
               />
-              <DetailRow
-                label="TMT Berakhir Kerja"
-                value={emp.tmt_berakhir_kerja}
-                type="date"
-              />
+              <div className="flex flex-col gap-1">
+                <span className="text-xs font-medium text-muted-foreground">
+                  TMT Berakhir Kerja
+                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm text-foreground">
+                    {emp.tmt_berakhir_kerja
+                      ? formatDateWITA(emp.tmt_berakhir_kerja)
+                      : "-"}
+                  </span>
+                  {emp.tmt_berakhir_kerja && (
+                    <ContractBadge
+                      tmtBerakhirKerja={emp.tmt_berakhir_kerja}
+                      size="sm"
+                      showLabel
+                    />
+                  )}
+                </div>
+              </div>
               <DetailRow
                 label="TMT Mulai Jabatan"
                 value={emp.tmt_mulai_jabatan}

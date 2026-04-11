@@ -65,13 +65,13 @@ export async function GET(request: Request): Promise<NextResponse> {
 
   const { searchParams } = new URL(request.url);
   const search = searchParams.get("search")?.trim() ?? "";
-  const sortParam = searchParams.get("sort") ?? "total";
-  const orderParam = searchParams.get("order") ?? "desc";
+  const sortParam = searchParams.get("sort") ?? "namaJabatan";
+  const orderParam = searchParams.get("order") ?? "asc";
   const limitParam = searchParams.get("limit");
 
   // Validate sort column
   const validSortColumns = ["namaJabatan", "pegawaiTetap", "pkwt", "tad", "total"];
-  const sortColumn = validSortColumns.includes(sortParam) ? sortParam : "total";
+  const sortColumn = validSortColumns.includes(sortParam) ? sortParam : "namaJabatan";
   const sortOrder = orderParam === "asc" ? "ASC" : "DESC";
 
   // Map sort column to SQL expression

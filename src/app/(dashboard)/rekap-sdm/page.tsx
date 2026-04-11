@@ -53,8 +53,8 @@ function MiniStatSkeleton() {
 export default function RekapSdmPage() {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<{ column: string; order: "asc" | "desc" }>({
-    column: "total",
-    order: "desc",
+    column: "namaJabatan",
+    order: "asc",
   });
 
   const debouncedSearch = useDebounce(search, 300);

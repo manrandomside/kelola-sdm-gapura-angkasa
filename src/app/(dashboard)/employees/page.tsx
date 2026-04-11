@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, Plus, Users } from "lucide-react";
+import { AlertTriangle, Clock, Download, Plus, Users } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -56,8 +56,11 @@ function MiniStatCard({ label, value, tone }: MiniStatProps) {
   );
 }
 
+type ContractTab = "all" | "expiring" | "expired";
+
 export default function EmployeesPage() {
   const { user } = useAuth();
+  const [contractTab, setContractTab] = useState<ContractTab>("all");
 
   const {
     search,
@@ -89,6 +92,7 @@ export default function EmployeesPage() {
     status_kerja,
     sort,
     order,
+    contract_status: contractTab === "all" ? null : contractTab,
   });
 
   const employees = query.data?.employees ?? [];
@@ -105,6 +109,11 @@ export default function EmployeesPage() {
     tad: 0,
     aktif: 0,
     nonAktif: 0,
+  };
+  const contractCounts = query.data?.contractCounts ?? {
+    all: 0,
+    expiring: 0,
+    expired: 0,
   };
 
   const canEdit = user?.role === "super_admin" || user?.role === "admin";
@@ -163,6 +172,77 @@ export default function EmployeesPage() {
         <MiniStatCard label="TAD" value={statistics.tad} tone="orange" />
         <MiniStatCard label="Aktif" value={statistics.aktif} tone="green" />
         <MiniStatCard label="Non Aktif" value={statistics.nonAktif} tone="red" />
+      </div>
+
+      {/* Contract status tabs */}
+      <div className="flex gap-1 rounded-xl border border-border bg-muted/40 p-1">
+        <button
+          type="button"
+          onClick={() => { setContractTab("all"); setPage(1); }}
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors",
+            contractTab === "all"
+              ? "bg-white text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          <Users className="size-4" />
+          Semua
+          <span className={cn(
+            "rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums",
+            contractTab === "all"
+              ? "bg-primary/10 text-primary"
+              : "bg-muted text-muted-foreground",
+          )}>
+            {contractCounts.all.toLocaleString("id-ID")}
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => { setContractTab("expiring"); setPage(1); }}
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors",
+            contractTab === "expiring"
+              ? "bg-white text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          <AlertTriangle className="size-4" />
+          Akan Berakhir
+          <span className={cn(
+            "rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums",
+            contractTab === "expiring"
+              ? "bg-amber-100 text-amber-700"
+              : contractCounts.expiring > 0
+                ? "bg-amber-100 text-amber-700"
+                : "bg-muted text-muted-foreground",
+          )}>
+            {contractCounts.expiring.toLocaleString("id-ID")}
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => { setContractTab("expired"); setPage(1); }}
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors",
+            contractTab === "expired"
+              ? "bg-white text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          <Clock className="size-4" />
+          Sudah Berakhir
+          <span className={cn(
+            "rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums",
+            contractTab === "expired"
+              ? "bg-red-100 text-red-700"
+              : contractCounts.expired > 0
+                ? "bg-red-100 text-red-700"
+                : "bg-muted text-muted-foreground",
+          )}>
+            {contractCounts.expired.toLocaleString("id-ID")}
+          </span>
+        </button>
       </div>
 
       {/* Toolbar: search + filters */}

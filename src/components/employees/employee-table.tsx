@@ -14,6 +14,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+import { ContractBadge } from "@/components/employees/contract-badge";
 import { DeleteEmployeeDialog } from "@/components/employees/delete-employee-dialog";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,7 @@ import {
 import { useDeleteEmployee } from "@/hooks/use-employee-detail";
 import { ROUTES } from "@/lib/constants/routes";
 import { cn } from "@/lib/utils";
+import { getContractInfo } from "@/lib/utils/contract";
 
 import type { EmployeeListItem } from "@/hooks/use-employees";
 import type { UserRole } from "@/lib/constants/enums";
@@ -67,6 +69,7 @@ const COLUMNS: ColumnDef[] = [
   { key: "nama_jabatan", header: "Jabatan", sortable: false, className: "min-w-[200px] max-w-[280px]" },
   { key: "status_pegawai", header: "Status Pegawai", sortable: true, className: "w-[150px]" },
   { key: "status_kerja", header: "Status Kerja", sortable: true, className: "w-[130px]" },
+  { key: "kontrak", header: "Kontrak", sortable: false, className: "w-[140px]" },
   { key: "provider", header: "Provider", sortable: false, className: "w-[170px] max-w-[170px]" },
   { key: "actions", header: "Aksi", sortable: false, className: "w-[80px] text-right" },
 ];
@@ -189,8 +192,16 @@ export function EmployeeTable({
               const detailHref = ROUTES.EMPLOYEES_DETAIL(emp.id);
               const editHref = ROUTES.EMPLOYEES_EDIT(emp.id);
 
+              const contractInfo = getContractInfo(emp.tmt_berakhir_kerja);
+              const rowBg =
+                contractInfo.status === "danger"
+                  ? "bg-red-50/30"
+                  : contractInfo.status === "expired"
+                    ? "bg-gray-50/50"
+                    : "";
+
               return (
-                <TableRow key={emp.id} className="group hover:bg-gray-50">
+                <TableRow key={emp.id} className={cn("group hover:bg-gray-50", rowBg)}>
                   <TableCell className="w-[60px] text-center text-sm text-muted-foreground">
                     {rowNumber}
                   </TableCell>
@@ -221,6 +232,17 @@ export function EmployeeTable({
                   </TableCell>
                   <TableCell className="w-[130px]">
                     <StatusBadge type="status_kerja" value={emp.status_kerja} />
+                  </TableCell>
+                  <TableCell className="w-[140px]">
+                    {emp.tmt_berakhir_kerja ? (
+                      <ContractBadge
+                        tmtBerakhirKerja={emp.tmt_berakhir_kerja}
+                        size="sm"
+                        showLabel
+                      />
+                    ) : (
+                      <span className="text-xs text-muted-foreground">-</span>
+                    )}
                   </TableCell>
                   <TableCell className="w-[170px] max-w-[170px] truncate text-sm text-muted-foreground">
                     {emp.provider ?? "-"}

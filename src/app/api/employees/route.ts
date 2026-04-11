@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { and, asc, count, desc, eq, ilike, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, ilike, isNotNull, lt, lte, or, sql, type SQL } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { activityLog, employee, user } from "@/lib/db/schema";
@@ -35,6 +35,7 @@ interface EmployeeListItem {
   status_kerja: string | null;
   provider: string | null;
   cabang: string | null;
+  tmt_berakhir_kerja: string | null;
 }
 
 interface EmployeeStatistics {
@@ -46,6 +47,12 @@ interface EmployeeStatistics {
   nonAktif: number;
 }
 
+interface ContractCounts {
+  all: number;
+  expiring: number;
+  expired: number;
+}
+
 interface EmployeeListResponse {
   employees: EmployeeListItem[];
   pagination: {
@@ -55,6 +62,7 @@ interface EmployeeListResponse {
     totalPages: number;
   };
   statistics: EmployeeStatistics;
+  contractCounts: ContractCounts;
 }
 
 function fail(
@@ -102,6 +110,8 @@ export async function GET(request: Request) {
   const provider = searchParams.get("provider")?.trim() || null;
   const statusKerja = searchParams.get("status_kerja")?.trim() || null;
 
+  const contractStatus = searchParams.get("contract_status")?.trim() || null;
+
   const sortParam = searchParams.get("sort") ?? "nama_lengkap";
   const sortKey: SortableColumn =
     sortParam in SORTABLE_COLUMNS
@@ -127,7 +137,23 @@ export async function GET(request: Request) {
   if (unitOrganisasi)
     conditions.push(eq(employee.unit_organisasi, unitOrganisasi));
   if (provider) conditions.push(eq(employee.provider, provider));
-  if (statusKerja) conditions.push(eq(employee.status_kerja, statusKerja));
+  if (statusKerja && !contractStatus) {
+    conditions.push(eq(employee.status_kerja, statusKerja));
+  }
+
+  // Contract status filter (overrides status_kerja when active)
+  if (contractStatus === "expiring") {
+    conditions.push(isNotNull(employee.tmt_berakhir_kerja));
+    conditions.push(sql`${employee.tmt_berakhir_kerja}::date > CURRENT_DATE`);
+    conditions.push(sql`${employee.tmt_berakhir_kerja}::date <= CURRENT_DATE + INTERVAL '90 days'`);
+    conditions.push(eq(employee.status_kerja, "Aktif"));
+  } else if (contractStatus === "expired") {
+    const expiredCondition = or(
+      sql`(${employee.tmt_berakhir_kerja} IS NOT NULL AND ${employee.tmt_berakhir_kerja}::date < CURRENT_DATE)`,
+      sql`${employee.status_kerja} IN ('Non Aktif', 'Pensiun')`,
+    );
+    if (expiredCondition) conditions.push(expiredCondition);
+  }
 
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
@@ -136,7 +162,24 @@ export async function GET(request: Request) {
 
   try {
     // Query list + count + statistics secara paralel.
-    const [rows, totalRows, statsRows] = await Promise.all([
+    // Base conditions without contract_status for counts
+    const baseConditions: SQL[] = [eq(employee.status, "active")];
+    if (search.length > 0) {
+      const pattern = `%${search}%`;
+      const sc = or(
+        ilike(employee.nama_lengkap, pattern),
+        ilike(employee.nip, pattern),
+        ilike(employee.nik, pattern),
+      );
+      if (sc) baseConditions.push(sc);
+    }
+    if (statusPegawai) baseConditions.push(eq(employee.status_pegawai, statusPegawai));
+    if (statusKontrak) baseConditions.push(eq(employee.status_kontrak, statusKontrak));
+    if (unitOrganisasi) baseConditions.push(eq(employee.unit_organisasi, unitOrganisasi));
+    if (provider) baseConditions.push(eq(employee.provider, provider));
+    const baseWhere = baseConditions.length > 0 ? and(...baseConditions) : undefined;
+
+    const [rows, totalRows, statsRows, contractCountRows] = await Promise.all([
       db
         .select({
           id: employee.id,
@@ -152,6 +195,7 @@ export async function GET(request: Request) {
           status_kerja: employee.status_kerja,
           provider: employee.provider,
           cabang: employee.cabang,
+          tmt_berakhir_kerja: employee.tmt_berakhir_kerja,
         })
         .from(employee)
         .where(whereClause)
@@ -175,6 +219,15 @@ export async function GET(request: Request) {
         })
         .from(employee)
         .where(whereClause),
+
+      db
+        .select({
+          all: count(),
+          expiring: sql<number>`count(*) filter (where ${employee.tmt_berakhir_kerja} IS NOT NULL AND ${employee.tmt_berakhir_kerja}::date > CURRENT_DATE AND ${employee.tmt_berakhir_kerja}::date <= CURRENT_DATE + INTERVAL '90 days' AND ${employee.status_kerja} = 'Aktif')`,
+          expired: sql<number>`count(*) filter (where (${employee.tmt_berakhir_kerja} IS NOT NULL AND ${employee.tmt_berakhir_kerja}::date < CURRENT_DATE) OR ${employee.status_kerja} IN ('Non Aktif', 'Pensiun'))`,
+        })
+        .from(employee)
+        .where(baseWhere),
     ]);
 
     const total = Number(totalRows[0]?.value ?? 0);
@@ -190,12 +243,20 @@ export async function GET(request: Request) {
       nonAktif: Number(statsRow?.nonAktif ?? 0),
     };
 
+    const ccRow = contractCountRows[0];
+    const contractCounts: ContractCounts = {
+      all: Number(ccRow?.all ?? 0),
+      expiring: Number(ccRow?.expiring ?? 0),
+      expired: Number(ccRow?.expired ?? 0),
+    };
+
     return NextResponse.json<ApiResponse<EmployeeListResponse>>({
       success: true,
       data: {
         employees: rows,
         pagination: { page, limit, total, totalPages },
         statistics,
+        contractCounts,
       },
     });
   } catch (err) {

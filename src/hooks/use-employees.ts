@@ -18,6 +18,7 @@ export interface EmployeeListItem {
   status_kerja: string | null;
   provider: string | null;
   cabang: string | null;
+  tmt_berakhir_kerja: string | null;
 }
 
 export interface EmployeeListPagination {
@@ -36,10 +37,17 @@ export interface EmployeeListStatistics {
   nonAktif: number;
 }
 
+export interface ContractCounts {
+  all: number;
+  expiring: number;
+  expired: number;
+}
+
 export interface EmployeeListData {
   employees: EmployeeListItem[];
   pagination: EmployeeListPagination;
   statistics: EmployeeListStatistics;
+  contractCounts: ContractCounts;
 }
 
 export interface UseEmployeesParams {
@@ -53,6 +61,7 @@ export interface UseEmployeesParams {
   status_kerja: string | null;
   sort: string;
   order: "asc" | "desc";
+  contract_status?: string | null;
 }
 
 function buildQueryString(params: UseEmployeesParams): string {
@@ -65,6 +74,7 @@ function buildQueryString(params: UseEmployeesParams): string {
   if (params.unit_organisasi) sp.set("unit_organisasi", params.unit_organisasi);
   if (params.provider) sp.set("provider", params.provider);
   if (params.status_kerja) sp.set("status_kerja", params.status_kerja);
+  if (params.contract_status) sp.set("contract_status", params.contract_status);
   sp.set("sort", params.sort);
   sp.set("order", params.order);
   return sp.toString();
