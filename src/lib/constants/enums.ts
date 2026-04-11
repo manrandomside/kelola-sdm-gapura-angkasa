@@ -217,5 +217,6 @@ export const ACTIVITY_TYPE_OPTIONS = [
   "update_user",
   "delete_user",
   "update_role",
+  "auto_status_update",
 ] as const;
 export type ActivityType = (typeof ACTIVITY_TYPE_OPTIONS)[number];

@@ -1,0 +1,21 @@
+name: Update Contract Status
+
+on:
+  schedule:
+    # Setiap hari jam 00:00 WITA (16:00 UTC hari sebelumnya)
+    - cron: '0 16 * * *'
+  workflow_dispatch: # Manual trigger untuk testing
+
+jobs:
+  update-status:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update contract status
+        run: |
+          curl -X POST "${{ secrets.APP_URL }}/api/cron/update-contract-status" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            --fail --silent --show-error
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}

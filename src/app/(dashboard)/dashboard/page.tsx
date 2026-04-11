@@ -3,6 +3,7 @@
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import {
+  AlertTriangle,
   CheckCircle,
   Download,
   Plus,
@@ -17,7 +18,7 @@ import { useMemo } from "react";
 
 import { AgeChart } from "@/components/dashboard/age-chart";
 import { BarChartCard } from "@/components/dashboard/bar-chart-card";
-import { DonutChartCard } from "@/components/dashboard/donut-chart";
+import { StatusKontrakChart } from "@/components/dashboard/status-kontrak-chart";
 import { GenderChart } from "@/components/dashboard/gender-chart";
 import { PositionGroupChart } from "@/components/dashboard/position-group-chart";
 import { RecentActivitiesCard } from "@/components/dashboard/recent-activities";
@@ -220,7 +221,22 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Chart Row 1: Status Kontrak Donut + Jenis Kelamin Donut */}
+      {/* Row 3: Kontrak Akan Berakhir warning card */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {statsLoading || !stats ? (
+          <StatCardSkeleton />
+        ) : (
+          <StatCard
+            title="Kontrak Akan Berakhir"
+            value={stats.kontrakAkanBerakhir}
+            icon={AlertTriangle}
+            color="amber"
+            description="Dalam 90 hari ke depan"
+          />
+        )}
+      </div>
+
+      {/* Chart Row 1: Status Kontrak Bar + Jenis Kelamin Donut */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {chartsLoading || !charts ? (
           <>
@@ -229,10 +245,7 @@ export default function DashboardPage() {
           </>
         ) : (
           <>
-            <DonutChartCard
-              title="Distribusi Status Kontrak"
-              data={charts.statusKontrak}
-            />
+            <StatusKontrakChart data={charts.statusKontrak} />
             <GenderChart data={charts.jenisKelamin} />
           </>
         )}

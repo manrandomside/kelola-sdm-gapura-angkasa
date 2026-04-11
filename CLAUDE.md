@@ -442,9 +442,9 @@ src/
 - [x] Halaman baru: Rekap SDM (/rekap-sdm) -- pivot table lengkap + sort + search + export
 - [x] Monitoring kontrak: color coding di daftar karyawan
 - [x] Monitoring kontrak: tab Aktif / Akan Berakhir / Sudah Berakhir
-- [ ] Monitoring kontrak: cron job auto update status Non Aktif
+- [x] Monitoring kontrak: cron job auto update status Non Aktif
 - [x] Monitoring kontrak: badge sisa kontrak di detail karyawan
-- [ ] Monitoring kontrak: stat card "Kontrak Akan Berakhir" di dashboard
+- [x] Monitoring kontrak: stat card "Kontrak Akan Berakhir" di dashboard
 - [ ] Multi Super Admin: field provider di tabel user
 - [ ] Multi Super Admin: filter query berdasarkan provider
 - [ ] Multi Super Admin: update RLS policy
@@ -457,7 +457,8 @@ src/
 - [ ] Toast notifications improvement
 - [ ] Error boundaries
 - [ ] Change password page
-- [ ] GitHub Actions: Supabase keep-alive cron
+- [x] GitHub Actions: Supabase keep-alive cron
+- [x] Revisi: Chart Distribusi Status Kontrak dari donut ke bar chart
 
 ---
 
@@ -649,3 +650,12 @@ src/
 - 135 row gagal import: kemungkinan duplicate email/NIK di CSV. Perlu investigasi lebih lanjut
 - Vercel Hobby timeout 60s: import bulk harus via localhost
 - Button warning di console (nativeButton prop): bukan blocking, hanya warning dari shadcn/ui Base UI migration
+
+### 2026-04-11: Cron Job & GitHub Actions
+- Cron job update contract status: setiap hari jam 00:00 WITA (16:00 UTC)
+- GitHub Actions workflow: `.github/workflows/cron-contract-status.yml`
+- Supabase keep-alive: `.github/workflows/supabase-keepalive.yml`
+- PENTING: Perlu set GitHub Secrets: `APP_URL`, `CRON_SECRET`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`
+- PENTING: Perlu set Vercel env: `CRON_SECRET` (sama dengan GitHub Secret)
+- Endpoint cron bisa juga dipanggil manual oleh super_admin untuk testing
+- Chart "Distribusi Status Kontrak" diubah dari donut ke bar chart

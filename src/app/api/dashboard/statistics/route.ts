@@ -19,6 +19,7 @@ interface DashboardStatistics {
   nonAktif: number;
   pensiun: number;
   mutasi: number;
+  kontrakAkanBerakhir: number;
 }
 
 function fail(
@@ -56,6 +57,7 @@ export async function GET(): Promise<NextResponse<ApiResponse<DashboardStatistic
         nonAktif: sql<number>`count(*) filter (where ${employee.status_kerja} = 'Non Aktif')`,
         pensiun: sql<number>`count(*) filter (where ${employee.status_kerja} = 'Pensiun')`,
         mutasi: sql<number>`count(*) filter (where ${employee.status_kerja} = 'Mutasi')`,
+        kontrakAkanBerakhir: sql<number>`count(*) filter (where ${employee.tmt_berakhir_kerja} is not null and ${employee.tmt_berakhir_kerja}::date > CURRENT_DATE and ${employee.tmt_berakhir_kerja}::date <= CURRENT_DATE + interval '90 days' and ${employee.status_kerja} = 'Aktif')`,
       })
       .from(employee)
       .where(eq(employee.status, "active"));
@@ -72,6 +74,7 @@ export async function GET(): Promise<NextResponse<ApiResponse<DashboardStatistic
       nonAktif: Number(row?.nonAktif ?? 0),
       pensiun: Number(row?.pensiun ?? 0),
       mutasi: Number(row?.mutasi ?? 0),
+      kontrakAkanBerakhir: Number(row?.kontrakAkanBerakhir ?? 0),
     };
 
     return NextResponse.json<ApiResponse<DashboardStatistics>>({

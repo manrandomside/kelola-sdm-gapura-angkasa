@@ -18,6 +18,7 @@ export interface DashboardStatistics {
   nonAktif: number;
   pensiun: number;
   mutasi: number;
+  kontrakAkanBerakhir: number;
 }
 
 export interface ChartDataPoint {
