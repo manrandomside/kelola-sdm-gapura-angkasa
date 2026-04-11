@@ -21,6 +21,7 @@ import { DonutChartCard } from "@/components/dashboard/donut-chart";
 import { GenderChart } from "@/components/dashboard/gender-chart";
 import { PositionGroupChart } from "@/components/dashboard/position-group-chart";
 import { RecentActivitiesCard } from "@/components/dashboard/recent-activities";
+import { RekapSummaryCard } from "@/components/dashboard/rekap-summary";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { StatusOrgChart } from "@/components/dashboard/status-org-chart";
 import { Button } from "@/components/ui/button";
@@ -283,6 +284,9 @@ export default function DashboardPage() {
       ) : (
         <StatusOrgChart data={charts.statusPerOrganisasi} />
       )}
+
+      {/* Rekap SDM per Jabatan (Top 10) */}
+      <RekapSummaryCard />
 
       {/* Recent Activities */}
       <RecentActivitiesCard

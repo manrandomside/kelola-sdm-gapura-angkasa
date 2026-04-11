@@ -10,5 +10,6 @@ export const ROUTES = {
   IMPORT: "/import",
   EXPORT: "/export",
   USERS: "/users",
+  REKAP_SDM: "/rekap-sdm",
   ACTIVITY_LOGS: "/activity-logs",
 } as const;

@@ -14,6 +14,7 @@ import {
   List,
   LogOut,
   Shield,
+  TableProperties,
   Upload,
   UserPlus,
   Users,
@@ -77,6 +78,12 @@ const NAV_ITEMS: ReadonlyArray<NavItem> = [
         roles: ["super_admin", "admin"],
       },
     ],
+  },
+  {
+    type: "leaf",
+    label: "Rekap SDM",
+    href: ROUTES.REKAP_SDM,
+    icon: TableProperties,
   },
   {
     type: "group",

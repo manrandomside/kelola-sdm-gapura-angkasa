@@ -438,8 +438,8 @@ src/
 - [x] Dashboard: chart Komposisi Usia SDM (bar)
 - [x] Dashboard: chart Kelompok Jabatan (bar)
 - [x] Dashboard: chart Pegawai Tetap & PKWT & TAD per Unit Organisasi (stacked bar)
-- [ ] Dashboard: rekap SDM per jabatan (pivot table ringkas)
-- [ ] Halaman baru: Rekap SDM (/rekap-sdm) -- pivot table lengkap + sort + search + export
+- [x] Dashboard: rekap SDM per jabatan (pivot table ringkas)
+- [x] Halaman baru: Rekap SDM (/rekap-sdm) -- pivot table lengkap + sort + search + export
 - [ ] Monitoring kontrak: color coding di daftar karyawan
 - [ ] Monitoring kontrak: tab Aktif / Akan Berakhir / Sudah Berakhir
 - [ ] Monitoring kontrak: cron job auto update status Non Aktif
