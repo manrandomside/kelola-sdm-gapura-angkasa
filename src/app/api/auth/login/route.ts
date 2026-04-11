@@ -69,6 +69,7 @@ export async function POST(request: Request) {
       role: user.role,
       email: user.email,
       status: user.status,
+      provider: user.provider,
     })
     .from(user)
     .where(eq(user.supabase_auth_id, signInData.user.id))
@@ -117,6 +118,7 @@ export async function POST(request: Request) {
     role: appUser.role as UserRole,
     email: appUser.email,
     status: appUser.status as UserStatus,
+    provider: appUser.provider,
   };
 
   return NextResponse.json<ApiResponse<LoginResponse>>({

@@ -146,6 +146,7 @@ function isLeafActive(href: string, pathname: string): boolean {
 interface SidebarProps {
   role: UserRole;
   userName: string;
+  provider?: string | null;
   onLogout?: () => void;
   isLoggingOut?: boolean;
   onNavigate?: () => void;
@@ -154,6 +155,7 @@ interface SidebarProps {
 export function Sidebar({
   role,
   userName,
+  provider,
   onLogout,
   isLoggingOut = false,
   onNavigate,
@@ -269,6 +271,11 @@ export function Sidebar({
             >
               {roleLabel(role)}
             </Badge>
+            {provider && (
+              <p className="mt-1 truncate text-xs text-muted-foreground">
+                {provider}
+              </p>
+            )}
           </div>
         </div>
         <button

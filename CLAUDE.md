@@ -445,10 +445,10 @@ src/
 - [x] Monitoring kontrak: cron job auto update status Non Aktif
 - [x] Monitoring kontrak: badge sisa kontrak di detail karyawan
 - [x] Monitoring kontrak: stat card "Kontrak Akan Berakhir" di dashboard
-- [ ] Multi Super Admin: field provider di tabel user
+- [x] Multi Super Admin: field provider di tabel user
 - [ ] Multi Super Admin: filter query berdasarkan provider
 - [ ] Multi Super Admin: update RLS policy
-- [ ] Multi Super Admin: seed 10 akun Super Admin per provider
+- [x] Multi Super Admin: seed 10 akun Super Admin per provider
 - [ ] Multi Super Admin: UI user management update
 - [ ] Responsive: tablet layout
 - [ ] Responsive: mobile layout
@@ -659,3 +659,13 @@ src/
 - PENTING: Perlu set Vercel env: `CRON_SECRET` (sama dengan GitHub Secret)
 - Endpoint cron bisa juga dipanggil manual oleh super_admin untuk testing
 - Chart "Distribusi Status Kontrak" diubah dari donut ke bar chart
+
+### 2026-04-12: Multi Super Admin per Provider
+- Kolom `provider` ditambahkan di tabel `user` (VARCHAR 100, nullable)
+- 10 akun super admin per provider di-seed via `POST /api/migrations/seed-provider-admins`
+- Akun SUPERADMIN (master) tetap ada, provider = PT Gapura Angkasa
+- Login semua akun: NIP = password (contoh: SUPERADMIN_GAPURA / SUPERADMIN_GAPURA)
+- Helper `isGapuraAdmin()` dan `getProviderFilter()` dibuat di `src/lib/utils/auth.ts` untuk filter di task berikutnya
+- Session/auth response sudah include field `provider`
+- Migration endpoint: `POST /api/migrations/add-provider-column` (tambah kolom + set provider SUPERADMIN)
+- Seed endpoint: `POST /api/migrations/seed-provider-admins` (buat 10 akun, update SUPERADMIN)

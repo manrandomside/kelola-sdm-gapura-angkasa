@@ -179,6 +179,7 @@ export const user = pgTable("user", {
     () => employee.id,
     { onDelete: "set null" },
   ),
+  provider: varchar("provider", { length: 100 }),
   last_login_at: timestamp("last_login_at", { withTimezone: true }),
   created_at: createdAt,
   updated_at: updatedAt,

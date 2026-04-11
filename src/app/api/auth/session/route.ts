@@ -41,6 +41,7 @@ export async function GET() {
       role: user.role,
       email: user.email,
       status: user.status,
+      provider: user.provider,
     })
     .from(user)
     .where(eq(user.supabase_auth_id, authUser.id))
@@ -65,6 +66,7 @@ export async function GET() {
     role: appUser.role as UserRole,
     email: appUser.email,
     status: appUser.status as UserStatus,
+    provider: appUser.provider,
   };
 
   return NextResponse.json<ApiResponse<SessionResponse>>({

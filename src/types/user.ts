@@ -12,6 +12,7 @@ export interface User {
   role: UserRole;
   status: UserStatus;
   employee_id: number | null;
+  provider: string | null;
   last_login_at: string | null;
   created_at: string;
   updated_at: string;
@@ -43,4 +44,5 @@ export interface SessionUser {
   role: UserRole;
   email: string | null;
   status: UserStatus;
+  provider: string | null;
 }

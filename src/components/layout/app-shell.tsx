@@ -44,6 +44,7 @@ export function AppShell({ children }: AppShellProps) {
         <Sidebar
           role={user.role}
           userName={user.full_name}
+          provider={user.provider}
           onLogout={handleLogout}
           isLoggingOut={isLoggingOut}
         />
@@ -58,6 +59,7 @@ export function AppShell({ children }: AppShellProps) {
           <Sidebar
             role={user.role}
             userName={user.full_name}
+            provider={user.provider}
             onLogout={handleLogout}
             isLoggingOut={isLoggingOut}
           />
