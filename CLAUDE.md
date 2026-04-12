@@ -454,10 +454,10 @@ src/
 - [x] Revisi: Chart Distribusi Status Kontrak dari donut ke bar chart
 
 ### Phase 6: UI/UX Enhancement & Revisi
-- [ ] Revisi: Stat card "Kontrak Akan Berakhir" -- reword label lebih jelas + perbaiki ukuran card agar konsisten
-- [ ] Revisi: Chart warna monoton -- Karyawan per Unit Organisasi, Karyawan per Provider, Kelompok Jabatan diubah dari hijau semua menjadi warna-warni
-- [ ] Revisi: Dashboard aktivitas terbaru -- hide aktivitas login/logout, hanya tampilkan create/update/delete/import/export
-- [ ] Revisi: Tab "Sudah Berakhir" -- tambah info breakdown (Non Aktif + Kontrak Lewat) agar tidak ambigu
+- [x] Revisi: Stat card "Kontrak Akan Berakhir" -- reword label lebih jelas + perbaiki ukuran card agar konsisten
+- [x] Revisi: Chart warna monoton -- Karyawan per Unit Organisasi, Karyawan per Provider, Kelompok Jabatan diubah dari hijau semua menjadi warna-warni
+- [x] Revisi: Dashboard aktivitas terbaru -- hide aktivitas login/logout, hanya tampilkan create/update/delete/import/export
+- [x] Revisi: Tab "Sudah Berakhir" -- tambah info breakdown (Non Aktif + Kontrak Lewat) agar tidak ambigu
 - [ ] Revisi: Template Import Excel -- redesign sesuai format spreadsheet (header hijau, sub-header keterangan, urutan kolom sama persis, informasi panduan per kolom)
 - [ ] Revisi: Template Export Excel -- samakan format dengan import (header hijau, styling profesional), fix padding/layout halaman export
 - [ ] Enhancement: Export pilih SDM -- tambah checkbox di tabel karyawan untuk memilih karyawan tertentu yang akan di-export

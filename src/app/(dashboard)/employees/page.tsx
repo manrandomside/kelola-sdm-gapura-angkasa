@@ -114,6 +114,7 @@ export default function EmployeesPage() {
     all: 0,
     expiring: 0,
     expired: 0,
+    expiredDetail: { nonAktif: 0, kontrakLewat: 0 },
   };
 
   const canEdit = user?.role === "super_admin" || user?.role === "admin";
@@ -244,6 +245,13 @@ export default function EmployeesPage() {
           </span>
         </button>
       </div>
+
+      {/* Breakdown info for "Sudah Berakhir" tab */}
+      {contractTab === "expired" && contractCounts.expired > 0 && (
+        <p className="text-xs text-muted-foreground">
+          ({contractCounts.expiredDetail.nonAktif.toLocaleString("id-ID")} Non Aktif + {contractCounts.expiredDetail.kontrakLewat.toLocaleString("id-ID")} Kontrak Lewat)
+        </p>
+      )}
 
       {/* Toolbar: search + filters */}
       <div className="space-y-3">

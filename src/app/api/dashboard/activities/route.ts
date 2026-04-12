@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { desc } from "drizzle-orm";
+import { and, desc, notInArray } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { activityLog } from "@/lib/db/schema";
@@ -48,6 +48,7 @@ export async function GET(): Promise<
   }
 
   try {
+    // Exclude login/logout from dashboard — only show meaningful actions.
     const rows = await db
       .select({
         id: activityLog.id,
@@ -61,6 +62,7 @@ export async function GET(): Promise<
         created_at: activityLog.created_at,
       })
       .from(activityLog)
+      .where(notInArray(activityLog.activity, ["login", "logout"]))
       .orderBy(desc(activityLog.created_at))
       .limit(10);
 

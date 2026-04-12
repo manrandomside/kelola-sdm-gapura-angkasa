@@ -4,6 +4,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -43,6 +44,18 @@ function CustomTooltip({
     </div>
   );
 }
+
+const POSITION_COLORS: Record<string, string> = {
+  STAFF: "#3B82F6",
+  SUPERVISOR: "#22C55E",
+  MANAGER: "#F59E0B",
+  "ACCOUNT EXECUTIVE / AE": "#8B5CF6",
+  NON: "#9CA3AF",
+  "GENERAL MANAGER": "#EC4899",
+  "EXECUTIVE GENERAL MANAGER": "#06B6D4",
+};
+
+const DEFAULT_COLOR = "#6366F1";
 
 export function PositionGroupChart({ data }: PositionGroupChartProps) {
   const total = data.reduce((acc, d) => acc + d.count, 0);
@@ -91,11 +104,17 @@ export function PositionGroupChart({ data }: PositionGroupChartProps) {
               />
               <Bar
                 dataKey="count"
-                fill="#439454"
                 radius={[0, 6, 6, 0]}
                 maxBarSize={24}
                 label={{ position: "right", fontSize: 11, fill: "#6B7280" }}
-              />
+              >
+                {data.map((entry, index) => (
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={POSITION_COLORS[entry.label] ?? DEFAULT_COLOR}
+                  />
+                ))}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>

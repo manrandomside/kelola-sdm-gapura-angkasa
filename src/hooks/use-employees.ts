@@ -37,10 +37,16 @@ export interface EmployeeListStatistics {
   nonAktif: number;
 }
 
+export interface ExpiredDetail {
+  nonAktif: number;
+  kontrakLewat: number;
+}
+
 export interface ContractCounts {
   all: number;
   expiring: number;
   expired: number;
+  expiredDetail: ExpiredDetail;
 }
 
 export interface EmployeeListData {

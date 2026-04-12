@@ -48,10 +48,16 @@ interface EmployeeStatistics {
   nonAktif: number;
 }
 
+interface ExpiredDetail {
+  nonAktif: number;
+  kontrakLewat: number;
+}
+
 interface ContractCounts {
   all: number;
   expiring: number;
   expired: number;
+  expiredDetail: ExpiredDetail;
 }
 
 interface EmployeeListResponse {
@@ -241,6 +247,8 @@ export async function GET(request: Request) {
           all: count(),
           expiring: sql<number>`count(*) filter (where ${employee.tmt_berakhir_kerja} IS NOT NULL AND ${employee.tmt_berakhir_kerja}::date > CURRENT_DATE AND ${employee.tmt_berakhir_kerja}::date <= CURRENT_DATE + INTERVAL '90 days' AND ${employee.status_kerja} = 'Aktif')`,
           expired: sql<number>`count(*) filter (where (${employee.tmt_berakhir_kerja} IS NOT NULL AND ${employee.tmt_berakhir_kerja}::date < CURRENT_DATE) OR ${employee.status_kerja} IN ('Non Aktif', 'Pensiun'))`,
+          expiredNonAktif: sql<number>`count(*) filter (where ${employee.status_kerja} IN ('Non Aktif', 'Pensiun'))`,
+          expiredKontrakLewat: sql<number>`count(*) filter (where ${employee.tmt_berakhir_kerja} IS NOT NULL AND ${employee.tmt_berakhir_kerja}::date < CURRENT_DATE AND ${employee.status_kerja} = 'Aktif')`,
         })
         .from(employee)
         .where(baseWhere),
@@ -264,6 +272,10 @@ export async function GET(request: Request) {
       all: Number(ccRow?.all ?? 0),
       expiring: Number(ccRow?.expiring ?? 0),
       expired: Number(ccRow?.expired ?? 0),
+      expiredDetail: {
+        nonAktif: Number(ccRow?.expiredNonAktif ?? 0),
+        kontrakLewat: Number(ccRow?.expiredKontrakLewat ?? 0),
+      },
     };
 
     return NextResponse.json<ApiResponse<EmployeeListResponse>>({

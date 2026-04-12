@@ -4,6 +4,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -17,6 +18,8 @@ interface BarChartCardProps {
   description?: string;
   data: ChartDataPoint[];
   color?: string;
+  /** Per-bar colors. When provided, each bar gets its own color (by index). */
+  colors?: string[];
   layout?: "horizontal" | "vertical";
   height?: number;
 }
@@ -54,6 +57,7 @@ export function BarChartCard({
   description,
   data,
   color = "#439454",
+  colors,
   layout = "vertical",
   height = 320,
 }: BarChartCardProps) {
@@ -102,10 +106,14 @@ export function BarChartCard({
                 />
                 <Bar
                   dataKey="value"
-                  fill={color}
+                  fill={colors ? undefined : color}
                   radius={[0, 6, 6, 0]}
                   maxBarSize={24}
-                />
+                >
+                  {colors && data.map((_entry, index) => (
+                    <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+                  ))}
+                </Bar>
               </BarChart>
             ) : (
               <BarChart
@@ -132,10 +140,14 @@ export function BarChartCard({
                 />
                 <Bar
                   dataKey="value"
-                  fill={color}
+                  fill={colors ? undefined : color}
                   radius={[6, 6, 0, 0]}
                   maxBarSize={40}
-                />
+                >
+                  {colors && data.map((_entry, index) => (
+                    <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+                  ))}
+                </Bar>
               </BarChart>
             )}
           </ResponsiveContainer>

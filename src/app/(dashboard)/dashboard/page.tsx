@@ -48,6 +48,34 @@ function StatCardSkeleton() {
   );
 }
 
+// Per-bar color palettes for charts that need colorful bars.
+const UNIT_ORG_COLORS: Record<string, string> = {
+  Landside: "#3B82F6",
+  Airside: "#22C55E",
+  GSE: "#F59E0B",
+  Ancillary: "#8B5CF6",
+  "Back Office": "#EC4899",
+  Avsec: "#06B6D4",
+  EGM: "#F97316",
+  GM: "#6366F1",
+  GH: "#14B8A6",
+};
+
+const PROVIDER_COLORS: Record<string, string> = {
+  "PT Air Box Personalia": "#3B82F6",
+  "PT Finfleet Teknologi Indonesia": "#22C55E",
+  "PT Gapura Angkasa": "#F59E0B",
+  "PT Mandala Garda Nusantara": "#8B5CF6",
+  "PT Mitra Angkasa Perdana": "#EC4899",
+  "PT IAS Support": "#06B6D4",
+  "PT Kidora Mandiri Investama": "#F97316",
+  "PT Duta Griya Sarana": "#6366F1",
+  "PT Graha Humanindo Manajemen": "#14B8A6",
+  "PT Aerotrans Wisata": "#EF4444",
+};
+
+const COLORFUL_FALLBACK = "#9CA3AF";
+
 function ChartSkeleton({ height = 320 }: { height?: number }) {
   return (
     <div className="rounded-xl border border-border bg-white p-5">
@@ -221,17 +249,18 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Row 3: Kontrak Akan Berakhir warning card */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {/* Row 3: Kontrak Segera Berakhir warning card */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {statsLoading || !stats ? (
           <StatCardSkeleton />
         ) : (
           <StatCard
-            title="Kontrak Akan Berakhir"
+            title="SDM Kontrak Segera Berakhir"
             value={stats.kontrakAkanBerakhir}
             icon={AlertTriangle}
             color="amber"
-            description="Dalam 90 hari ke depan"
+            compact
+            description={`${stats.kontrakAkanBerakhir.toLocaleString("id-ID")} karyawan dalam 90 hari ke depan`}
           />
         )}
       </div>
@@ -263,6 +292,9 @@ export default function DashboardPage() {
             <BarChartCard
               title="Karyawan per Unit Organisasi"
               data={charts.unitOrganisasi}
+              colors={charts.unitOrganisasi.map(
+                (d) => UNIT_ORG_COLORS[d.name] ?? COLORFUL_FALLBACK,
+              )}
               layout="vertical"
               height={320}
             />
@@ -283,6 +315,9 @@ export default function DashboardPage() {
             <BarChartCard
               title="Karyawan per Provider"
               data={charts.provider}
+              colors={charts.provider.map(
+                (d) => PROVIDER_COLORS[d.name] ?? COLORFUL_FALLBACK,
+              )}
               layout="vertical"
               height={360}
             />
