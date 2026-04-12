@@ -450,15 +450,24 @@ src/
 - [x] Multi Super Admin: update RLS policy
 - [x] Multi Super Admin: seed 10 akun Super Admin per provider
 - [x] Multi Super Admin: UI user management update
-- [ ] Responsive: tablet layout
-- [ ] Responsive: mobile layout
-- [ ] Loading states (skeleton/spinner)
-- [ ] Empty states with illustration
-- [ ] Toast notifications improvement
-- [ ] Error boundaries
-- [ ] Change password page
 - [x] GitHub Actions: Supabase keep-alive cron
 - [x] Revisi: Chart Distribusi Status Kontrak dari donut ke bar chart
+
+### Phase 6: UI/UX Enhancement & Revisi
+- [ ] Revisi: Stat card "Kontrak Akan Berakhir" -- reword label lebih jelas + perbaiki ukuran card agar konsisten
+- [ ] Revisi: Chart warna monoton -- Karyawan per Unit Organisasi, Karyawan per Provider, Kelompok Jabatan diubah dari hijau semua menjadi warna-warni
+- [ ] Revisi: Dashboard aktivitas terbaru -- hide aktivitas login/logout, hanya tampilkan create/update/delete/import/export
+- [ ] Revisi: Tab "Sudah Berakhir" -- tambah info breakdown (Non Aktif + Kontrak Lewat) agar tidak ambigu
+- [ ] Revisi: Template Import Excel -- redesign sesuai format spreadsheet (header hijau, sub-header keterangan, urutan kolom sama persis, informasi panduan per kolom)
+- [ ] Revisi: Template Export Excel -- samakan format dengan import (header hijau, styling profesional), fix padding/layout halaman export
+- [ ] Enhancement: Export pilih SDM -- tambah checkbox di tabel karyawan untuk memilih karyawan tertentu yang akan di-export
+- [ ] Polish: Responsive tablet layout
+- [ ] Polish: Responsive mobile layout
+- [ ] Polish: Loading states (skeleton/spinner)
+- [ ] Polish: Empty states with illustration
+- [ ] Polish: Toast notifications improvement
+- [ ] Polish: Error boundaries
+- [ ] Polish: Change password page
 
 ---
 
@@ -601,6 +610,61 @@ src/
   5. Sidebar/TopBar: tampilkan nama provider yang login
   6. User management page: filter berdasarkan provider
   7. Seed script: buat 10 akun super admin
+
+### Phase 6 Detail
+
+#### Stat Card Kontrak
+- Label diganti (opsi: "Peringatan Kontrak" / "SDM Perlu Perpanjangan" / "Kontrak Hampir Habis" -- akan ditentukan)
+- Subtitle: "X karyawan akan berakhir dalam 90 hari"
+- Ukuran card harus sama dengan card lain (Paket SDM, Paket Pekerjaan), tidak boleh lebih kecil/besar
+- Tetap terpisah dari baris stat cards utama, posisi setelah Breakdown TAD
+
+#### Chart Warna-Warni
+- 3 chart yang saat ini hijau semua harus diubah:
+  - Karyawan per Unit Organisasi: setiap unit warna berbeda
+  - Karyawan per Provider: setiap provider warna berbeda
+  - Kelompok Jabatan: setiap jabatan warna berbeda
+- Gunakan palet warna dari design system: blue, violet, amber, pink, cyan, orange, emerald, rose, indigo, teal
+
+#### Dashboard Aktivitas
+- Di dashboard (5 item terbaru): filter OUT aktivitas login dan logout
+- Hanya tampilkan: create_employee, update_employee, delete_employee, import_excel, export_excel, create_user, update_user, delete_user, update_role, auto_status_update
+- Di halaman Activity Log lengkap (/activity-logs): tetap tampilkan semua termasuk login (tidak berubah)
+
+#### Tab Sudah Berakhir -- Info Breakdown
+- Di tab "Sudah Berakhir", tampilkan breakdown angka: "239 (236 Non Aktif + 3 Kontrak Lewat)"
+- Atau tooltip yang menjelaskan: "Termasuk karyawan Non Aktif dan karyawan yang kontraknya sudah melewati TMT Berakhir Kerja"
+
+#### Template Import Excel
+- Redesign template agar sesuai format spreadsheet Google Sheets yang sudah ada
+- Row 1: kosong atau judul
+- Row 2: header dengan background hijau #439454, teks putih, bold
+- Header memiliki keterangan tambahan di baris bawahnya (sub-header):
+  - Lokasi Kerja: "(Bandar Udara Ngurah Rai)"
+  - Cabang: "(DPS)"
+  - Status Pegawai: "(PEGAWAI TETAP/PKWT/TAD)"
+  - Status Kontrak: "(PEGAWAI TETAP/PAKET PEKERJAAN/PKWT/PAKET SDM)"
+  - Status Kerja: "(Aktif/Non Aktif)"
+  - Unit Organisasi: "(Airside, Landside, GSE, GH, Back Office, Ancillary, Avsec, EGM, GM)"
+  - Kode Organisasi: "(MO/ME/MF/MS/MU/MK/MQ/MB/EGM/GM)"
+  - Jenis Kelamin: "(L / P)"
+  - Jenis Sepatu: "(Pantofel / Safety Shoes)"
+  - TMT Mulai Kerja: "(dd/mm/yyyy)"
+  - dll sesuai spreadsheet
+- Urutan kolom harus sama persis dengan spreadsheet: NO, NIP, KTP/NIK, NAMA LENGKAP, LOKASI KERJA, CABANG, STATUS PEGAWAI, STATUS KONTRAK, STATUS KERJA, PROVIDER, UNIT ORGANISASI, KODE ORGANISASI, NAMA ORGANISASI, SUB UNIT ORGANISASI, NAMA JABATAN, UNIT KERJA SESUAI KONTRAK, TMT MULAI KERJA, TMT MULAI JABATAN, TMT BERAKHIR JABATAN, TMT BERAKHIR KERJA, MASA KERJA (BULAN), MASA KERJA (TAHUN), JENIS KELAMIN, JENIS SEPATU, UKURAN SEPATU, TEMPAT LAHIR, TANGGAL LAHIR, USIA, KOTA DOMISILI, ALAMAT, PENDIDIKAN, NAMA INSTANSI PENDIDIKAN, JURUSAN, REMARKS PENDIDIKAN, TAHUN LULUS, HANDPHONE, KATEGORI KARYAWAN, TMT PENSIUN, GRADE, NO BPJS KESEHATAN, NO BPJS KETENAGAKERJAAN, KELOMPOK JABATAN, KELAS JABATAN, WEIGHT, HEIGHT
+
+#### Template Export Excel
+- Format sama dengan import (header hijau, styling profesional)
+- Fix padding halaman export agar konsisten dengan halaman lain
+- Kolom dan urutan sama dengan template import
+
+#### Export Pilih SDM
+- Tambah kolom checkbox di tabel daftar karyawan (kolom pertama)
+- Header checkbox: select all / deselect all
+- Tombol Export berubah behavior:
+  - Jika ada yang dicentang: "Export X Terpilih"
+  - Jika tidak ada yang dicentang: "Export Semua" (atau sesuai filter aktif)
+- Jumlah terpilih ditampilkan: "3 karyawan dipilih"
 
 ---
 
