@@ -20,6 +20,14 @@ export default function EmployeeCreatePage() {
 
   const canEdit = user?.role === "super_admin" || user?.role === "admin";
 
+  // Provider-scoped super admins get their provider auto-filled and locked.
+  const lockedProvider =
+    user?.role === "super_admin" &&
+    user.provider !== null &&
+    user.provider !== "PT Gapura Angkasa"
+      ? user.provider
+      : null;
+
   if (!canEdit) {
     return (
       <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-6 py-8 text-center">
@@ -61,7 +69,7 @@ export default function EmployeeCreatePage() {
         </p>
       </div>
 
-      <EmployeeForm />
+      <EmployeeForm lockedProvider={lockedProvider} />
     </div>
   );
 }

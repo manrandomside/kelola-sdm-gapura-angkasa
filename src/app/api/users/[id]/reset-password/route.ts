@@ -79,6 +79,8 @@ export async function POST(
     );
   }
 
+  const resetProviderScope = getProviderFilter(auth);
+
   try {
     const rows = await db
       .select({
@@ -86,6 +88,8 @@ export async function POST(
         nip: user.nip,
         full_name: user.full_name,
         supabase_auth_id: user.supabase_auth_id,
+        role: user.role,
+        provider: user.provider,
       })
       .from(user)
       .where(eq(user.id, id))
@@ -94,6 +98,14 @@ export async function POST(
     const target = rows[0];
     if (!target) {
       return fail(404, "NOT_FOUND", "Pengguna tidak ditemukan");
+    }
+
+    // Provider-scoped admin restrictions.
+    if (resetProviderScope && target.provider !== resetProviderScope) {
+      return fail(403, "FORBIDDEN", "Anda tidak memiliki akses ke pengguna ini");
+    }
+    if (resetProviderScope && target.role === "super_admin") {
+      return fail(403, "FORBIDDEN", "Anda tidak dapat mereset password akun Super Admin");
     }
 
     // Password default = NIP.

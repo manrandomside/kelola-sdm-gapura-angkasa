@@ -446,10 +446,10 @@ src/
 - [x] Monitoring kontrak: badge sisa kontrak di detail karyawan
 - [x] Monitoring kontrak: stat card "Kontrak Akan Berakhir" di dashboard
 - [x] Multi Super Admin: field provider di tabel user
-- [ ] Multi Super Admin: filter query berdasarkan provider
-- [ ] Multi Super Admin: update RLS policy
+- [x] Multi Super Admin: filter query berdasarkan provider
+- [x] Multi Super Admin: update RLS policy
 - [x] Multi Super Admin: seed 10 akun Super Admin per provider
-- [ ] Multi Super Admin: UI user management update
+- [x] Multi Super Admin: UI user management update
 - [ ] Responsive: tablet layout
 - [ ] Responsive: mobile layout
 - [ ] Loading states (skeleton/spinner)
@@ -669,3 +669,17 @@ src/
 - Session/auth response sudah include field `provider`
 - Migration endpoint: `POST /api/migrations/add-provider-column` (tambah kolom + set provider SUPERADMIN)
 - Seed endpoint: `POST /api/migrations/seed-provider-admins` (buat 10 akun, update SUPERADMIN)
+
+### 2026-04-12: Provider-Scoped Access (Complete)
+- Semua API endpoint sudah di-filter berdasarkan provider user yang login
+- Super Admin Gapura (provider = 'PT Gapura Angkasa' atau NULL) bisa akses semua data
+- Super Admin provider lain hanya bisa akses data provider mereka sendiri
+- Employee detail/edit/delete: return 403 jika provider tidak cocok
+- Import: Super Admin provider hanya bisa import data provider mereka (provider di-force ke provider user)
+- Export: Super Admin provider hanya export data provider mereka
+- User management: Super Admin provider hanya manage user dari provider mereka
+- User management: Super Admin provider tidak bisa assign role super_admin
+- Employee form: provider auto-fill dan locked untuk Super Admin provider
+- Reset password: Super Admin provider tidak bisa reset password akun super_admin lain
+- NIP/NIK validation tetap global (harus unik lintas provider)
+- Activity logs tidak di-filter per provider (semua bisa lihat semua log)

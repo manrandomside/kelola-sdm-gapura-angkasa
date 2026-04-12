@@ -100,6 +100,14 @@ export default function EmployeeEditPage({ params }: EmployeeEditPageProps) {
 
   const canEdit = user?.role === "super_admin" || user?.role === "admin";
 
+  // Provider-scoped super admins get their provider auto-filled and locked.
+  const lockedProvider =
+    user?.role === "super_admin" &&
+    user.provider !== null &&
+    user.provider !== "PT Gapura Angkasa"
+      ? user.provider
+      : null;
+
   const defaults = useMemo(
     () => (data ? toFormDefaults(data) : undefined),
     [data],
@@ -204,6 +212,7 @@ export default function EmployeeEditPage({ params }: EmployeeEditPageProps) {
         mode="edit"
         employeeId={data.id}
         defaultValues={defaults}
+        lockedProvider={lockedProvider}
       />
     </div>
   );

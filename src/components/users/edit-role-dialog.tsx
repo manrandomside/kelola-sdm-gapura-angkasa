@@ -30,6 +30,8 @@ interface EditRoleDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   user: UserListItem | null;
+  /** When true, hide the super_admin option (provider-scoped admins). */
+  hideSuperAdmin?: boolean;
 }
 
 const ROLE_LABELS: Record<UserRole, string> = {
@@ -42,6 +44,7 @@ export function EditRoleDialog({
   open,
   onOpenChange,
   user,
+  hideSuperAdmin = false,
 }: EditRoleDialogProps) {
   const [role, setRole] = useState<UserRole>("staff");
   const updateMutation = useUpdateUser();
@@ -104,11 +107,13 @@ export function EditRoleDialog({
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              {USER_ROLE_OPTIONS.map((opt) => (
-                <SelectItem key={opt} value={opt}>
-                  {ROLE_LABELS[opt]}
-                </SelectItem>
-              ))}
+              {USER_ROLE_OPTIONS
+                .filter((opt) => !(hideSuperAdmin && opt === "super_admin"))
+                .map((opt) => (
+                  <SelectItem key={opt} value={opt}>
+                    {ROLE_LABELS[opt]}
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
         </div>

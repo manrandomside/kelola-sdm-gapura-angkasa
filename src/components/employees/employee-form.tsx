@@ -324,12 +324,15 @@ interface EmployeeFormProps {
   mode?: EmployeeFormMode;
   employeeId?: number;
   defaultValues?: Partial<CreateEmployeeInput>;
+  /** When set, the provider field is locked to this value and read-only. */
+  lockedProvider?: string | null;
 }
 
 export function EmployeeForm({
   mode = "create",
   employeeId,
   defaultValues,
+  lockedProvider,
 }: EmployeeFormProps = {}) {
   const router = useRouter();
   const isEdit = mode === "edit";
@@ -347,8 +350,14 @@ export function EmployeeForm({
   );
 
   const mergedDefaults = useMemo<CreateEmployeeInput>(
-    () => ({ ...DEFAULT_VALUES, ...(defaultValues ?? {}) }),
-    [defaultValues],
+    () => ({
+      ...DEFAULT_VALUES,
+      ...(defaultValues ?? {}),
+      ...(lockedProvider
+        ? { provider: lockedProvider as CreateEmployeeInput["provider"] }
+        : {}),
+    }),
+    [defaultValues, lockedProvider],
   );
 
   const form = useForm<CreateEmployeeInput>({
@@ -806,19 +815,27 @@ export function EmployeeForm({
               </FieldRow>
 
               <FieldRow label="Provider" error={errors.provider?.message}>
-                <Controller
-                  control={control}
-                  name="provider"
-                  render={({ field }) => (
-                    <SelectField
-                      value={(field.value as string) ?? ""}
-                      onChange={field.onChange}
-                      options={PROVIDER_OPTIONS}
-                      placeholder="Pilih provider"
-                      allowClear
-                    />
-                  )}
-                />
+                {lockedProvider ? (
+                  <Input
+                    value={lockedProvider}
+                    readOnly
+                    className="bg-muted/40"
+                  />
+                ) : (
+                  <Controller
+                    control={control}
+                    name="provider"
+                    render={({ field }) => (
+                      <SelectField
+                        value={(field.value as string) ?? ""}
+                        onChange={field.onChange}
+                        options={PROVIDER_OPTIONS}
+                        placeholder="Pilih provider"
+                        allowClear
+                      />
+                    )}
+                  />
+                )}
               </FieldRow>
 
               <FieldRow label="Lokasi Kerja" htmlFor="lokasi_kerja">

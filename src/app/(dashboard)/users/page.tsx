@@ -143,6 +143,16 @@ export default function UsersPage() {
     return currentUser.role === "super_admin";
   }, [currentUser, isAuthLoading]);
 
+  // Provider-scoped admins cannot assign super_admin role.
+  const isProviderScoped = useMemo(() => {
+    if (!currentUser) return false;
+    if (currentUser.role !== "super_admin") return false;
+    return (
+      currentUser.provider !== null &&
+      currentUser.provider !== "PT Gapura Angkasa"
+    );
+  }, [currentUser]);
+
   // Role check: hanya super_admin yang boleh mengakses halaman ini.
   if (canAccess === false) {
     if (typeof window !== "undefined") {
@@ -360,6 +370,7 @@ export default function UsersPage() {
           if (!open) setEditRoleTarget(null);
         }}
         user={editRoleTarget}
+        hideSuperAdmin={isProviderScoped}
       />
       <ResetPasswordDialog
         open={resetTarget !== null}
