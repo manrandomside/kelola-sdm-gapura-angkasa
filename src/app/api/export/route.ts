@@ -4,6 +4,7 @@ import { and, asc, eq, ilike, or, type SQL } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { activityLog, employee, user } from "@/lib/db/schema";
 import { createClient } from "@/lib/supabase/server";
+import { getProviderFilter, getSessionUser } from "@/lib/utils/auth";
 import {
   generateExportExcel,
   type ExportColumnSet,
@@ -55,21 +56,12 @@ export async function POST(request: Request): Promise<NextResponse> {
     return fail(401, "UNAUTHORIZED", "Sesi tidak valid");
   }
 
-  const appUserRows = await db
-    .select({
-      id: user.id,
-      full_name: user.full_name,
-      email: user.email,
-      role: user.role,
-    })
-    .from(user)
-    .where(eq(user.supabase_auth_id, authUser.id))
-    .limit(1);
-
-  const appUser = appUserRows[0];
+  const appUser = await getSessionUser(authUser.id);
   if (!appUser) {
     return fail(403, "FORBIDDEN", "Akun tidak terdaftar");
   }
+
+  const exportProviderScope = getProviderFilter(appUser);
 
   let body: ExportRequestBody;
   try {
@@ -84,6 +76,11 @@ export async function POST(request: Request): Promise<NextResponse> {
   // Build WHERE conditions sama persis seperti GET /api/employees — termasuk
   // filter status = 'active' agar soft-deleted tidak ikut ter-export.
   const conditions: SQL[] = [eq(employee.status, "active")];
+
+  // Provider-scoped super admins can only export their own provider's employees.
+  if (exportProviderScope) {
+    conditions.push(eq(employee.provider, exportProviderScope));
+  }
 
   const search = filter.search?.trim() ?? "";
   if (search.length > 0) {
@@ -184,9 +181,9 @@ export async function POST(request: Request): Promise<NextResponse> {
       await db.insert(activityLog).values({
         user_id: appUser.id,
         user_email: appUser.email,
-        user_name: appUser.full_name,
+        user_name: appUser.fullName,
         activity: "export_excel",
-        description: `${appUser.full_name} mengexport ${records.length} data karyawan`,
+        description: `${appUser.fullName} mengexport ${records.length} data karyawan`,
         target_type: "employee",
         target_label: fileName,
         metadata: {

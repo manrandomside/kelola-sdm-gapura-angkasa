@@ -4,6 +4,7 @@ import { and, eq, ne, isNotNull, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { employee, user } from "@/lib/db/schema";
 import { createClient } from "@/lib/supabase/server";
+import { getProviderFilter, getSessionUser } from "@/lib/utils/auth";
 import { logger } from "@/lib/utils/logger";
 
 import type { ApiResponse } from "@/types/api";
@@ -52,16 +53,12 @@ export async function GET(request: Request): Promise<NextResponse> {
     return fail(401, "UNAUTHORIZED", "Sesi tidak valid");
   }
 
-  const appUserRows = await db
-    .select({ id: user.id, role: user.role })
-    .from(user)
-    .where(eq(user.supabase_auth_id, authUser.id))
-    .limit(1);
-
-  const appUser = appUserRows[0];
+  const appUser = await getSessionUser(authUser.id);
   if (!appUser) {
     return fail(403, "FORBIDDEN", "Akun tidak terdaftar");
   }
+
+  const providerScope = getProviderFilter(appUser);
 
   const { searchParams } = new URL(request.url);
   const search = searchParams.get("search")?.trim() ?? "";
@@ -89,6 +86,11 @@ export async function GET(request: Request): Promise<NextResponse> {
       ? sql`AND nama_jabatan ILIKE ${"%" + search + "%"}`
       : sql``;
 
+    // Provider scope condition
+    const providerCondition = providerScope
+      ? sql`AND provider = ${providerScope}`
+      : sql``;
+
     const rows = await db.execute<{
       nama_jabatan: string;
       pegawai_tetap: string;
@@ -107,6 +109,7 @@ export async function GET(request: Request): Promise<NextResponse> {
         AND nama_jabatan IS NOT NULL
         AND nama_jabatan != ''
         AND nama_jabatan != '-'
+        ${providerCondition}
         ${searchCondition}
       GROUP BY nama_jabatan
       ORDER BY ${sql.raw(sortColumnMap[sortColumn])} ${sql.raw(sortOrder)}${sortColumn !== "namaJabatan" ? sql`, nama_jabatan ASC` : sql``}
@@ -132,6 +135,7 @@ export async function GET(request: Request): Promise<NextResponse> {
         AND nama_jabatan IS NOT NULL
         AND nama_jabatan != ''
         AND nama_jabatan != '-'
+        ${providerCondition}
     `);
 
     const summaryRow = summaryRows[0];

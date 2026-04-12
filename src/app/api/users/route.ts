@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { activityLog, employee, user } from "@/lib/db/schema";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { getProviderFilter, getSessionUser, isGapuraAdmin } from "@/lib/utils/auth";
 import { logger } from "@/lib/utils/logger";
 import { createUserSchema } from "@/lib/validations/user";
 
@@ -20,6 +21,7 @@ interface UserListItem {
   role: UserRole;
   status: UserStatus;
   employee_id: number | null;
+  provider: string | null;
   last_login_at: string | null;
   created_at: string;
 }
@@ -72,14 +74,16 @@ function nipToEmail(nip: string): string {
 }
 
 // Ambil app user + role check super_admin. Return null jika gagal (response sudah dikirim).
+interface SuperAdminInfo {
+  id: string;
+  fullName: string;
+  email: string | null;
+  role: string;
+  provider: string | null;
+}
+
 async function requireSuperAdmin(): Promise<
-  | {
-      id: string;
-      full_name: string;
-      email: string | null;
-      role: string;
-    }
-  | NextResponse<ApiResponse<never>>
+  SuperAdminInfo | NextResponse<ApiResponse<never>>
 > {
   const supabase = await createClient();
   const {
@@ -90,18 +94,7 @@ async function requireSuperAdmin(): Promise<
     return fail(401, "UNAUTHORIZED", "Sesi tidak valid");
   }
 
-  const rows = await db
-    .select({
-      id: user.id,
-      full_name: user.full_name,
-      email: user.email,
-      role: user.role,
-    })
-    .from(user)
-    .where(eq(user.supabase_auth_id, authUser.id))
-    .limit(1);
-
-  const appUser = rows[0];
+  const appUser = await getSessionUser(authUser.id);
   if (!appUser) {
     return fail(403, "FORBIDDEN", "Akun tidak terdaftar");
   }
@@ -127,7 +120,18 @@ export async function GET(request: Request) {
   const role = searchParams.get("role")?.trim() || null;
   const status = searchParams.get("status")?.trim() || null;
 
+  // Provider-scoped admins can only see users from their own provider.
+  // They should NOT see other super_admin accounts.
+  const providerScope = getProviderFilter(auth);
+
   const conditions: SQL[] = [];
+
+  if (providerScope) {
+    // Only show users that have the same provider OR whose linked employee
+    // belongs to the same provider. Also hide other super_admin accounts.
+    conditions.push(eq(user.provider, providerScope));
+  }
+
   if (search.length > 0) {
     const pattern = `%${search}%`;
     const searchCondition = or(
@@ -153,6 +157,7 @@ export async function GET(request: Request) {
           role: user.role,
           status: user.status,
           employee_id: user.employee_id,
+          provider: user.provider,
           last_login_at: user.last_login_at,
           created_at: user.created_at,
         })
@@ -173,7 +178,8 @@ export async function GET(request: Request) {
           admin: sql<number>`count(*) filter (where ${user.role} = 'admin')`,
           staff: sql<number>`count(*) filter (where ${user.role} = 'staff')`,
         })
-        .from(user),
+        .from(user)
+        .where(providerScope ? eq(user.provider, providerScope) : undefined),
     ]);
 
     const total = Number(totalRows[0]?.value ?? 0);
@@ -187,6 +193,7 @@ export async function GET(request: Request) {
       role: row.role as UserRole,
       status: row.status as UserStatus,
       employee_id: row.employee_id,
+      provider: row.provider,
       last_login_at: row.last_login_at?.toISOString() ?? null,
       created_at: row.created_at.toISOString(),
     }));
@@ -254,6 +261,12 @@ export async function POST(
   }
 
   const data = parsed.data;
+
+  // Provider-scoped admin cannot assign super_admin role.
+  const createProviderScope = getProviderFilter(auth);
+  if (createProviderScope && data.role === "super_admin") {
+    return fail(403, "FORBIDDEN", "Anda tidak dapat membuat akun Super Admin");
+  }
 
   try {
     // Cek NIP tidak boleh bentrok di tabel user.
@@ -328,9 +341,9 @@ export async function POST(
       await db.insert(activityLog).values({
         user_id: auth.id,
         user_email: auth.email,
-        user_name: auth.full_name,
+        user_name: auth.fullName,
         activity: "create_user",
-        description: `${auth.full_name} menambah pengguna ${created.full_name} (${created.nip}) dengan role ${created.role}`,
+        description: `${auth.fullName} menambah pengguna ${created.full_name} (${created.nip}) dengan role ${created.role}`,
         target_type: "user",
         target_label: created.full_name,
         metadata: { role: created.role },

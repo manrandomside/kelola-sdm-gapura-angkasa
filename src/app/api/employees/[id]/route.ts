@@ -4,6 +4,7 @@ import { and, eq, ne, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { activityLog, employee, user } from "@/lib/db/schema";
 import { createClient } from "@/lib/supabase/server";
+import { getProviderFilter, getSessionUser } from "@/lib/utils/auth";
 import { logger } from "@/lib/utils/logger";
 import { updateEmployeeSchema } from "@/lib/validations/employee";
 
@@ -107,6 +108,13 @@ export async function GET(
     return fail(401, "UNAUTHORIZED", "Sesi tidak valid");
   }
 
+  // Provider scope check.
+  const sessionUser = await getSessionUser(authUser.id);
+  if (!sessionUser) {
+    return fail(403, "FORBIDDEN", "Akun tidak terdaftar");
+  }
+  const providerScope = getProviderFilter(sessionUser);
+
   const { id: idParam } = await params;
   const id = parseId(idParam);
   if (!id) {
@@ -123,6 +131,11 @@ export async function GET(
     const row = rows[0];
     if (!row || row.status !== "active") {
       return fail(404, "NOT_FOUND", "Data karyawan tidak ditemukan");
+    }
+
+    // Provider-scoped admins can only view their own provider's employees.
+    if (providerScope && row.provider !== providerScope) {
+      return fail(403, "FORBIDDEN", "Anda tidak memiliki akses ke data karyawan ini");
     }
 
     const detail: EmployeeDetail = {
@@ -208,18 +221,7 @@ export async function PUT(
     return fail(401, "UNAUTHORIZED", "Sesi tidak valid");
   }
 
-  const appUserRows = await db
-    .select({
-      id: user.id,
-      full_name: user.full_name,
-      email: user.email,
-      role: user.role,
-    })
-    .from(user)
-    .where(eq(user.supabase_auth_id, authUser.id))
-    .limit(1);
-
-  const appUser = appUserRows[0];
+  const appUser = await getSessionUser(authUser.id);
   if (!appUser) {
     return fail(403, "FORBIDDEN", "Akun tidak terdaftar");
   }
@@ -230,6 +232,8 @@ export async function PUT(
       "Anda tidak memiliki akses untuk mengubah karyawan",
     );
   }
+
+  const putProviderScope = getProviderFilter(appUser);
 
   const { id: idParam } = await params;
   const id = parseId(idParam);
@@ -272,6 +276,11 @@ export async function PUT(
     const existing = existingRows[0];
     if (!existing) {
       return fail(404, "NOT_FOUND", "Data karyawan tidak ditemukan");
+    }
+
+    // Provider-scoped admins can only update their own provider's employees.
+    if (putProviderScope && existing.provider !== putProviderScope) {
+      return fail(403, "FORBIDDEN", "Anda tidak memiliki akses ke data karyawan ini");
     }
 
     // Cek NIP unik (exclude current id).
@@ -436,9 +445,9 @@ export async function PUT(
       await db.insert(activityLog).values({
         user_id: appUser.id,
         user_email: appUser.email,
-        user_name: appUser.full_name,
+        user_name: appUser.fullName,
         activity: "update_employee",
-        description: `${appUser.full_name} mengubah data karyawan ${result.nama_lengkap} (${result.nip})`,
+        description: `${appUser.fullName} mengubah data karyawan ${result.nama_lengkap} (${result.nip})`,
         target_type: "employee",
         target_label: result.nama_lengkap,
         metadata: { changed_fields: changedFields },
@@ -476,28 +485,19 @@ export async function DELETE(
     return fail(401, "UNAUTHORIZED", "Sesi tidak valid");
   }
 
-  const appUserRows = await db
-    .select({
-      id: user.id,
-      full_name: user.full_name,
-      email: user.email,
-      role: user.role,
-    })
-    .from(user)
-    .where(eq(user.supabase_auth_id, authUser.id))
-    .limit(1);
-
-  const appUser = appUserRows[0];
-  if (!appUser) {
+  const delAppUser = await getSessionUser(authUser.id);
+  if (!delAppUser) {
     return fail(403, "FORBIDDEN", "Akun tidak terdaftar");
   }
-  if (appUser.role !== "admin" && appUser.role !== "super_admin") {
+  if (delAppUser.role !== "admin" && delAppUser.role !== "super_admin") {
     return fail(
       403,
       "FORBIDDEN",
       "Anda tidak memiliki akses untuk menghapus karyawan",
     );
   }
+
+  const delProviderScope = getProviderFilter(delAppUser);
 
   const { id: idParam } = await params;
   const id = parseId(idParam);
@@ -512,6 +512,7 @@ export async function DELETE(
         nip: employee.nip,
         nama_lengkap: employee.nama_lengkap,
         status: employee.status,
+        provider: employee.provider,
       })
       .from(employee)
       .where(eq(employee.id, id))
@@ -520,6 +521,11 @@ export async function DELETE(
     const existing = existingRows[0];
     if (!existing) {
       return fail(404, "NOT_FOUND", "Data karyawan tidak ditemukan");
+    }
+
+    // Provider-scoped admins can only delete their own provider's employees.
+    if (delProviderScope && existing.provider !== delProviderScope) {
+      return fail(403, "FORBIDDEN", "Anda tidak memiliki akses ke data karyawan ini");
     }
 
     // Soft delete karyawan — jangan hard delete karena masih dibutuhkan
@@ -538,11 +544,11 @@ export async function DELETE(
     // Activity log — non-fatal.
     try {
       await db.insert(activityLog).values({
-        user_id: appUser.id,
-        user_email: appUser.email,
-        user_name: appUser.full_name,
+        user_id: delAppUser.id,
+        user_email: delAppUser.email,
+        user_name: delAppUser.fullName,
         activity: "delete_employee",
-        description: `${appUser.full_name} menghapus data karyawan ${existing.nama_lengkap} (${existing.nip})`,
+        description: `${delAppUser.fullName} menghapus data karyawan ${existing.nama_lengkap} (${existing.nip})`,
         target_type: "employee",
         target_label: existing.nama_lengkap,
         metadata: {

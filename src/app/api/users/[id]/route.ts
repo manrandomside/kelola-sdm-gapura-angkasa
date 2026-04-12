@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { activityLog, user } from "@/lib/db/schema";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { getProviderFilter, getSessionUser } from "@/lib/utils/auth";
 import { logger } from "@/lib/utils/logger";
 import { updateUserSchema } from "@/lib/validations/user";
 
@@ -36,14 +37,16 @@ function fail(
   );
 }
 
+interface SuperAdminInfo {
+  id: string;
+  fullName: string;
+  email: string | null;
+  role: string;
+  provider: string | null;
+}
+
 async function requireSuperAdmin(): Promise<
-  | {
-      id: string;
-      full_name: string;
-      email: string | null;
-      role: string;
-    }
-  | NextResponse<ApiResponse<never>>
+  SuperAdminInfo | NextResponse<ApiResponse<never>>
 > {
   const supabase = await createClient();
   const {
@@ -54,18 +57,7 @@ async function requireSuperAdmin(): Promise<
     return fail(401, "UNAUTHORIZED", "Sesi tidak valid");
   }
 
-  const rows = await db
-    .select({
-      id: user.id,
-      full_name: user.full_name,
-      email: user.email,
-      role: user.role,
-    })
-    .from(user)
-    .where(eq(user.supabase_auth_id, authUser.id))
-    .limit(1);
-
-  const appUser = rows[0];
+  const appUser = await getSessionUser(authUser.id);
   if (!appUser) {
     return fail(403, "FORBIDDEN", "Akun tidak terdaftar");
   }
@@ -95,6 +87,8 @@ export async function GET(
     return fail(400, "INVALID_ID", "ID pengguna tidak valid");
   }
 
+  const getProviderScope = getProviderFilter(auth);
+
   try {
     const rows = await db
       .select({
@@ -105,6 +99,7 @@ export async function GET(
         role: user.role,
         status: user.status,
         employee_id: user.employee_id,
+        provider: user.provider,
         last_login_at: user.last_login_at,
         created_at: user.created_at,
         updated_at: user.updated_at,
@@ -116,6 +111,11 @@ export async function GET(
     const row = rows[0];
     if (!row) {
       return fail(404, "NOT_FOUND", "Pengguna tidak ditemukan");
+    }
+
+    // Provider-scoped admin can only view users from their own provider.
+    if (getProviderScope && row.provider !== getProviderScope) {
+      return fail(403, "FORBIDDEN", "Anda tidak memiliki akses ke pengguna ini");
     }
 
     const detail: UserDetail = {
@@ -186,6 +186,12 @@ export async function PUT(
 
   const data = parsed.data;
 
+  // Provider-scoped admins cannot assign super_admin role.
+  const putProviderScope = getProviderFilter(auth);
+  if (putProviderScope && data.role === "super_admin") {
+    return fail(403, "FORBIDDEN", "Anda tidak dapat mengubah role menjadi Super Admin");
+  }
+
   try {
     const existingRows = await db
       .select({
@@ -194,6 +200,7 @@ export async function PUT(
         full_name: user.full_name,
         role: user.role,
         status: user.status,
+        provider: user.provider,
       })
       .from(user)
       .where(eq(user.id, id))
@@ -202,6 +209,16 @@ export async function PUT(
     const existing = existingRows[0];
     if (!existing) {
       return fail(404, "NOT_FOUND", "Pengguna tidak ditemukan");
+    }
+
+    // Provider-scoped admin can only edit users from their own provider.
+    if (putProviderScope && existing.provider !== putProviderScope) {
+      return fail(403, "FORBIDDEN", "Anda tidak memiliki akses ke pengguna ini");
+    }
+
+    // Provider-scoped admin cannot edit other super_admin accounts.
+    if (putProviderScope && existing.role === "super_admin" && existing.id !== auth.id) {
+      return fail(403, "FORBIDDEN", "Anda tidak dapat mengubah akun Super Admin lain");
     }
 
     const updatedRows = await db
@@ -244,9 +261,9 @@ export async function PUT(
       await db.insert(activityLog).values({
         user_id: auth.id,
         user_email: auth.email,
-        user_name: auth.full_name,
+        user_name: auth.fullName,
         activity: activityType,
-        description: `${auth.full_name} memperbarui pengguna ${existing.full_name} (${existing.nip})${
+        description: `${auth.fullName} memperbarui pengguna ${existing.full_name} (${existing.nip})${
           changes.length > 0 ? ` — ${changes.join(", ")}` : ""
         }`,
         target_type: "user",
@@ -305,6 +322,8 @@ export async function DELETE(
     );
   }
 
+  const delProviderScope = getProviderFilter(auth);
+
   try {
     const existingRows = await db
       .select({
@@ -313,6 +332,8 @@ export async function DELETE(
         full_name: user.full_name,
         supabase_auth_id: user.supabase_auth_id,
         status: user.status,
+        role: user.role,
+        provider: user.provider,
       })
       .from(user)
       .where(eq(user.id, id))
@@ -321,6 +342,14 @@ export async function DELETE(
     const existing = existingRows[0];
     if (!existing) {
       return fail(404, "NOT_FOUND", "Pengguna tidak ditemukan");
+    }
+
+    // Provider-scoped admin restrictions.
+    if (delProviderScope && existing.provider !== delProviderScope) {
+      return fail(403, "FORBIDDEN", "Anda tidak memiliki akses ke pengguna ini");
+    }
+    if (delProviderScope && existing.role === "super_admin") {
+      return fail(403, "FORBIDDEN", "Anda tidak dapat menonaktifkan akun Super Admin");
     }
 
     if (existing.status === "inactive") {
@@ -348,9 +377,9 @@ export async function DELETE(
       await db.insert(activityLog).values({
         user_id: auth.id,
         user_email: auth.email,
-        user_name: auth.full_name,
+        user_name: auth.fullName,
         activity: "delete_user",
-        description: `${auth.full_name} menonaktifkan pengguna ${existing.full_name} (${existing.nip})`,
+        description: `${auth.fullName} menonaktifkan pengguna ${existing.full_name} (${existing.nip})`,
         target_type: "user",
         target_label: existing.full_name,
         ip_address: request.headers.get("x-forwarded-for") ?? null,

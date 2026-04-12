@@ -4,6 +4,7 @@ import { and, asc, count, desc, eq, gte, ilike, isNotNull, lt, lte, or, sql, typ
 import { db } from "@/lib/db";
 import { activityLog, employee, user } from "@/lib/db/schema";
 import { createClient } from "@/lib/supabase/server";
+import { getProviderFilter, getSessionUser } from "@/lib/utils/auth";
 import { logger } from "@/lib/utils/logger";
 import { createEmployeeSchema } from "@/lib/validations/employee";
 
@@ -99,6 +100,13 @@ export async function GET(request: Request) {
     return fail(401, "UNAUTHORIZED", "Sesi tidak valid");
   }
 
+  // Resolve provider scope for the logged-in user.
+  const sessionUser = await getSessionUser(authUser.id);
+  if (!sessionUser) {
+    return fail(403, "FORBIDDEN", "Akun tidak terdaftar");
+  }
+  const providerScope = getProviderFilter(sessionUser);
+
   const { searchParams } = new URL(request.url);
 
   const page = parsePositiveInt(searchParams.get("page"), 1);
@@ -122,6 +130,11 @@ export async function GET(request: Request) {
   // Build WHERE conditions secara konsisten untuk list, count, dan statistik.
   // Selalu kecualikan record soft-deleted (status = 'inactive').
   const conditions: SQL[] = [eq(employee.status, "active")];
+
+  // Provider-scoped super admins can only see their own provider's employees.
+  if (providerScope) {
+    conditions.push(eq(employee.provider, providerScope));
+  }
 
   if (search.length > 0) {
     const pattern = `%${search}%`;
@@ -164,6 +177,9 @@ export async function GET(request: Request) {
     // Query list + count + statistics secara paralel.
     // Base conditions without contract_status for counts
     const baseConditions: SQL[] = [eq(employee.status, "active")];
+    if (providerScope) {
+      baseConditions.push(eq(employee.provider, providerScope));
+    }
     if (search.length > 0) {
       const pattern = `%${search}%`;
       const sc = or(
@@ -286,24 +302,15 @@ export async function POST(
     return fail(401, "UNAUTHORIZED", "Sesi tidak valid");
   }
 
-  const appUserRows = await db
-    .select({
-      id: user.id,
-      full_name: user.full_name,
-      email: user.email,
-      role: user.role,
-    })
-    .from(user)
-    .where(eq(user.supabase_auth_id, authUser.id))
-    .limit(1);
-
-  const appUser = appUserRows[0];
+  const appUser = await getSessionUser(authUser.id);
   if (!appUser) {
     return fail(403, "FORBIDDEN", "Akun tidak terdaftar");
   }
   if (appUser.role !== "admin" && appUser.role !== "super_admin") {
     return fail(403, "FORBIDDEN", "Anda tidak memiliki akses untuk menambah karyawan");
   }
+
+  const createProviderScope = getProviderFilter(appUser);
 
   let body: unknown;
   try {
@@ -365,6 +372,9 @@ export async function POST(
       }
     }
 
+    // If provider-scoped admin, force provider to their own.
+    const employeeProvider = createProviderScope ?? data.provider;
+
     const inserted = await db
       .insert(employee)
       .values({
@@ -381,7 +391,7 @@ export async function POST(
         status_pegawai: data.status_pegawai,
         status_kontrak: data.status_kontrak,
         status_kerja: data.status_kerja,
-        provider: data.provider,
+        provider: employeeProvider,
         kode_organisasi: data.kode_organisasi,
         unit_organisasi: data.unit_organisasi,
         nama_organisasi: data.nama_organisasi,
@@ -431,9 +441,9 @@ export async function POST(
       await db.insert(activityLog).values({
         user_id: appUser.id,
         user_email: appUser.email,
-        user_name: appUser.full_name,
+        user_name: appUser.fullName,
         activity: "create_employee",
-        description: `${appUser.full_name} menambah karyawan ${created.nama_lengkap} (${created.nip})`,
+        description: `${appUser.fullName} menambah karyawan ${created.nama_lengkap} (${created.nip})`,
         target_type: "employee",
         target_label: created.nama_lengkap,
         ip_address: request.headers.get("x-forwarded-for") ?? null,

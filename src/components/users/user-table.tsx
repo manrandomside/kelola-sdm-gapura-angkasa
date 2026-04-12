@@ -101,6 +101,9 @@ function LoadingRows() {
           <TableCell className="w-[140px]">
             <Skeleton className="h-5 w-full" />
           </TableCell>
+          <TableCell className="w-[200px]">
+            <Skeleton className="h-5 w-full" />
+          </TableCell>
           <TableCell className="w-[110px]">
             <Skeleton className="h-5 w-full" />
           </TableCell>
@@ -159,6 +162,9 @@ export function UserTable({
             <TableHead className="w-[140px] text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Role
             </TableHead>
+            <TableHead className="w-[200px] text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Provider
+            </TableHead>
             <TableHead className="w-[110px] text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Status
             </TableHead>
@@ -175,7 +181,7 @@ export function UserTable({
             <LoadingRows />
           ) : users.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={7} className="p-0">
+              <TableCell colSpan={8} className="p-0">
                 <EmptyState />
               </TableCell>
             </TableRow>
@@ -201,6 +207,9 @@ export function UserTable({
                   </TableCell>
                   <TableCell className="w-[140px]">
                     <RoleBadge role={u.role} />
+                  </TableCell>
+                  <TableCell className="w-[200px] max-w-[200px] truncate text-sm text-muted-foreground">
+                    {u.provider ?? "-"}
                   </TableCell>
                   <TableCell className="w-[110px]">
                     <StatusBadge status={u.status} />

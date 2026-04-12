@@ -6,6 +6,7 @@ import { activityLog, employee, importLog, user } from "@/lib/db/schema";
 import { createClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { KODE_ORGANISASI_MAP, STATUS_KONTRAK_TO_PEGAWAI } from "@/lib/constants/enums";
+import { getProviderFilter, getSessionUser } from "@/lib/utils/auth";
 import { logger } from "@/lib/utils/logger";
 
 import type { ApiResponse } from "@/types/api";
@@ -160,18 +161,7 @@ export async function POST(
     return fail(401, "UNAUTHORIZED", "Sesi tidak valid");
   }
 
-  const appUserRows = await db
-    .select({
-      id: user.id,
-      full_name: user.full_name,
-      email: user.email,
-      role: user.role,
-    })
-    .from(user)
-    .where(eq(user.supabase_auth_id, authUser.id))
-    .limit(1);
-
-  const appUser = appUserRows[0];
+  const appUser = await getSessionUser(authUser.id);
   if (!appUser) {
     return fail(403, "FORBIDDEN", "Akun tidak terdaftar");
   }
@@ -182,6 +172,8 @@ export async function POST(
       "Anda tidak memiliki akses untuk import data",
     );
   }
+
+  const importProviderScope = getProviderFilter(appUser);
 
   let body: ExecuteRequestBody;
   try {
@@ -268,6 +260,11 @@ export async function POST(
         .limit(1);
 
       const values = buildEmployeeValues(data);
+
+      // Provider-scoped admins: force provider to their own.
+      if (importProviderScope) {
+        values.provider = importProviderScope;
+      }
 
       if (existingEmp.length > 0) {
         // UPDATE — hanya field non-null.
@@ -407,9 +404,9 @@ export async function POST(
     await db.insert(activityLog).values({
       user_id: appUser.id,
       user_email: appUser.email,
-      user_name: appUser.full_name,
+      user_name: appUser.fullName,
       activity: "import_excel",
-      description: `${appUser.full_name} mengimport ${successCount} data karyawan dari ${body.fileName}`,
+      description: `${appUser.fullName} mengimport ${successCount} data karyawan dari ${body.fileName}`,
       target_type: "import_log",
       target_label: body.fileName,
       metadata: {

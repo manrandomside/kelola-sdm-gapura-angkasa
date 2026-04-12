@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { count, eq, sql } from "drizzle-orm";
+import { and, count, eq, sql, type SQL } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { employee } from "@/lib/db/schema";
 import { createClient } from "@/lib/supabase/server";
+import { getProviderFilter, getSessionUser } from "@/lib/utils/auth";
 import { logger } from "@/lib/utils/logger";
 
 import type { ApiResponse } from "@/types/api";
@@ -43,7 +44,20 @@ export async function GET(): Promise<NextResponse<ApiResponse<DashboardStatistic
     return fail(401, "UNAUTHORIZED", "Sesi tidak valid");
   }
 
+  const sessionUser = await getSessionUser(authUser.id);
+  if (!sessionUser) {
+    return fail(403, "FORBIDDEN", "Akun tidak terdaftar");
+  }
+  const providerScope = getProviderFilter(sessionUser);
+
   try {
+    // Build WHERE with optional provider scope.
+    const conditions: SQL[] = [eq(employee.status, "active")];
+    if (providerScope) {
+      conditions.push(eq(employee.provider, providerScope));
+    }
+    const whereClause = and(...conditions);
+
     // Satu query dengan conditional COUNT agar efisien.
     const rows = await db
       .select({
@@ -60,7 +74,7 @@ export async function GET(): Promise<NextResponse<ApiResponse<DashboardStatistic
         kontrakAkanBerakhir: sql<number>`count(*) filter (where ${employee.tmt_berakhir_kerja} is not null and ${employee.tmt_berakhir_kerja}::date > CURRENT_DATE and ${employee.tmt_berakhir_kerja}::date <= CURRENT_DATE + interval '90 days' and ${employee.status_kerja} = 'Aktif')`,
       })
       .from(employee)
-      .where(eq(employee.status, "active"));
+      .where(whereClause);
 
     const row = rows[0];
     const statistics: DashboardStatistics = {

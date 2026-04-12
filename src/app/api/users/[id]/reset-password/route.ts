@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { activityLog, user } from "@/lib/db/schema";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { getProviderFilter, getSessionUser } from "@/lib/utils/auth";
 import { logger } from "@/lib/utils/logger";
 
 import type { ApiResponse } from "@/types/api";
@@ -20,14 +21,16 @@ function fail(
   );
 }
 
+interface SuperAdminInfo {
+  id: string;
+  fullName: string;
+  email: string | null;
+  role: string;
+  provider: string | null;
+}
+
 async function requireSuperAdmin(): Promise<
-  | {
-      id: string;
-      full_name: string;
-      email: string | null;
-      role: string;
-    }
-  | NextResponse<ApiResponse<never>>
+  SuperAdminInfo | NextResponse<ApiResponse<never>>
 > {
   const supabase = await createClient();
   const {
@@ -38,18 +41,7 @@ async function requireSuperAdmin(): Promise<
     return fail(401, "UNAUTHORIZED", "Sesi tidak valid");
   }
 
-  const rows = await db
-    .select({
-      id: user.id,
-      full_name: user.full_name,
-      email: user.email,
-      role: user.role,
-    })
-    .from(user)
-    .where(eq(user.supabase_auth_id, authUser.id))
-    .limit(1);
-
-  const appUser = rows[0];
+  const appUser = await getSessionUser(authUser.id);
   if (!appUser) {
     return fail(403, "FORBIDDEN", "Akun tidak terdaftar");
   }
@@ -127,9 +119,9 @@ export async function POST(
       await db.insert(activityLog).values({
         user_id: auth.id,
         user_email: auth.email,
-        user_name: auth.full_name,
+        user_name: auth.fullName,
         activity: "update_user",
-        description: `${auth.full_name} mereset password pengguna ${target.full_name} (${target.nip}) ke NIP`,
+        description: `${auth.fullName} mereset password pengguna ${target.full_name} (${target.nip}) ke NIP`,
         target_type: "user",
         target_label: target.full_name,
         metadata: { action: "reset_password" },

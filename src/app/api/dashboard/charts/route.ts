@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { and, count, desc, eq, isNotNull, ne, sql } from "drizzle-orm";
+import { and, count, desc, eq, isNotNull, ne, sql, type SQL } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { employee } from "@/lib/db/schema";
 import { createClient } from "@/lib/supabase/server";
+import { getProviderFilter, getSessionUser } from "@/lib/utils/auth";
 import { logger } from "@/lib/utils/logger";
 
 import type { ApiResponse } from "@/types/api";
@@ -76,8 +77,19 @@ export async function GET(): Promise<NextResponse<ApiResponse<DashboardCharts>>>
     return fail(401, "UNAUTHORIZED", "Sesi tidak valid");
   }
 
+  const sessionUser = await getSessionUser(authUser.id);
+  if (!sessionUser) {
+    return fail(403, "FORBIDDEN", "Akun tidak terdaftar");
+  }
+  const providerScope = getProviderFilter(sessionUser);
+
   try {
-    const activeFilter = eq(employee.status, "active");
+    // Base filter: active employees, optionally scoped by provider.
+    const baseConditions: SQL[] = [eq(employee.status, "active")];
+    if (providerScope) {
+      baseConditions.push(eq(employee.provider, providerScope));
+    }
+    const activeFilter = and(...baseConditions)!;
 
     const [
       statusKontrakRows,

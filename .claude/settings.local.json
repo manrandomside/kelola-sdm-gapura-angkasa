@@ -43,7 +43,9 @@
       "Bash(ls src/app/\\\\\\(dashboard\\\\\\)/dashboard)",
       "Bash(ls \"src/app/\\(dashboard\\)/dashboard\")",
       "Bash(ls src/app/\"\\(auth\\)\"/layout.tsx)",
-      "Bash(git reset:*)"
+      "Bash(git reset:*)",
+      "Bash(npx yaml-lint:*)",
+      "Bash(git:*)"
     ]
   }
 }

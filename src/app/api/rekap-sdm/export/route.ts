@@ -5,6 +5,7 @@ import * as XLSX from "xlsx";
 import { db } from "@/lib/db";
 import { activityLog, employee, user } from "@/lib/db/schema";
 import { createClient } from "@/lib/supabase/server";
+import { getProviderFilter, getSessionUser } from "@/lib/utils/auth";
 import { logger } from "@/lib/utils/logger";
 import { formatDateWITA } from "@/lib/utils/date";
 
@@ -33,21 +34,15 @@ export async function POST(request: Request): Promise<NextResponse> {
     return fail(401, "UNAUTHORIZED", "Sesi tidak valid");
   }
 
-  const appUserRows = await db
-    .select({
-      id: user.id,
-      full_name: user.full_name,
-      email: user.email,
-      role: user.role,
-    })
-    .from(user)
-    .where(eq(user.supabase_auth_id, authUser.id))
-    .limit(1);
-
-  const appUser = appUserRows[0];
+  const appUser = await getSessionUser(authUser.id);
   if (!appUser) {
     return fail(403, "FORBIDDEN", "Akun tidak terdaftar");
   }
+
+  const providerScope = getProviderFilter(appUser);
+  const providerCondition = providerScope
+    ? sql`AND provider = ${providerScope}`
+    : sql``;
 
   try {
     const rows = await db.execute<{
@@ -68,6 +63,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         AND nama_jabatan IS NOT NULL
         AND nama_jabatan != ''
         AND nama_jabatan != '-'
+        ${providerCondition}
       GROUP BY nama_jabatan
       ORDER BY total DESC, nama_jabatan ASC
     `);
@@ -89,6 +85,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         AND nama_jabatan IS NOT NULL
         AND nama_jabatan != ''
         AND nama_jabatan != '-'
+        ${providerCondition}
     `);
 
     const summary = summaryRows[0];
@@ -171,9 +168,9 @@ export async function POST(request: Request): Promise<NextResponse> {
       await db.insert(activityLog).values({
         user_id: appUser.id,
         user_email: appUser.email,
-        user_name: appUser.full_name,
+        user_name: appUser.fullName,
         activity: "export_excel",
-        description: `${appUser.full_name} mengexport rekap SDM (${rows.length} jabatan)`,
+        description: `${appUser.fullName} mengexport rekap SDM (${rows.length} jabatan)`,
         target_type: "rekap_sdm",
         target_label: fileName,
         metadata: { total_jabatan: rows.length },
