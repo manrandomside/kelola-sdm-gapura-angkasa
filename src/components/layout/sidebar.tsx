@@ -210,7 +210,7 @@ export function Sidebar({
   }
 
   return (
-    <aside className="flex h-full w-full flex-col bg-card">
+    <aside className="flex h-full w-full flex-col glass-sidebar">
       {/* Header */}
       <div className="flex items-center gap-3 px-5 py-5">
         <Image

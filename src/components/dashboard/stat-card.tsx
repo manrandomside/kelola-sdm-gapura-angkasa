@@ -57,7 +57,7 @@ export function StatCard({
   return (
     <div
       className={cn(
-        "group flex items-center gap-4 rounded-xl border border-border bg-white p-5 transition-shadow hover:shadow-md",
+        "group glass-card flex items-center gap-4 rounded-2xl p-5 transition-all hover:bg-white/80 hover:shadow-md",
         compact && "p-4",
       )}
     >

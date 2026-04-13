@@ -25,9 +25,9 @@ export function RekapSummaryCard() {
   const { rows, summary } = data;
 
   return (
-    <div className="rounded-xl border border-border bg-white">
+    <div className="glass-card-subtle rounded-2xl">
       {/* Header */}
-      <div className="border-b border-border px-5 py-4">
+      <div className="border-b border-white/30 px-5 py-4">
         <h3 className="text-base font-semibold text-foreground">
           Rekap SDM per Jabatan
         </h3>
@@ -136,8 +136,8 @@ export function RekapSummaryCard() {
 // ============================================================================
 function RekapSummarySkeleton() {
   return (
-    <div className="rounded-xl border border-border bg-white">
-      <div className="border-b border-border px-5 py-4">
+    <div className="glass-card-subtle rounded-2xl">
+      <div className="border-b border-white/30 px-5 py-4">
         <Skeleton className="h-5 w-48" />
         <Skeleton className="mt-1 h-3 w-36" />
       </div>

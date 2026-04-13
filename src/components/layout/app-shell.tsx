@@ -40,7 +40,7 @@ export function AppShell({ children }: AppShellProps) {
   return (
     <div className="min-h-screen bg-background">
       {/* Desktop sidebar — fixed, always visible at lg+ */}
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r border-border bg-card lg:block">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 lg:block">
         <Sidebar
           role={user.role}
           userName={user.full_name}

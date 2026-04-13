@@ -474,7 +474,7 @@ src/
 
 #### Landing Page & Glass UI
 - [x] Landing page: halaman baru di route / (hero, fitur, info perusahaan, footer, tombol Masuk)
-- [ ] Subtle glass UI: terapkan di dashboard (stat cards, card chart) dan sidebar — bukan full glassmorphism, hanya subtle (backdrop-blur, semi-transparan)
+- [x] Subtle glass UI: terapkan di dashboard (stat cards, card chart) dan sidebar — bukan full glassmorphism, hanya subtle (backdrop-blur, semi-transparan)
 
 #### Dashboard Improvements
 - [ ] Tooltip info di Breakdown TAD — ikon info (?) di card Paket SDM dan Paket Pekerjaan dengan penjelasan: "Karyawan TAD yang dikontrak melalui paket SDM" / "Karyawan TAD yang dikontrak melalui paket pekerjaan"

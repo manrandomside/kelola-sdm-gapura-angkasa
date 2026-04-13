@@ -61,7 +61,7 @@ export function PositionGroupChart({ data }: PositionGroupChartProps) {
   const total = data.reduce((acc, d) => acc + d.count, 0);
 
   return (
-    <div className="rounded-xl border border-border bg-white p-5">
+    <div className="glass-card-subtle rounded-2xl p-5">
       <h3 className="text-base font-semibold text-foreground">
         Kelompok Jabatan
       </h3>

@@ -74,7 +74,7 @@ export function RecentActivitiesCard({
   isLoading,
 }: RecentActivitiesCardProps) {
   return (
-    <div className="flex h-full flex-col rounded-xl border border-border bg-white p-5">
+    <div className="flex h-full flex-col glass-card-subtle rounded-2xl p-5">
       <div className="flex items-center justify-between">
         <h3 className="text-base font-semibold text-foreground">
           Aktivitas Terbaru

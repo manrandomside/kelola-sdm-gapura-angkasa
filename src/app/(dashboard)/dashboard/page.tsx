@@ -38,7 +38,7 @@ import { APP_TIMEZONE } from "@/lib/utils/date";
 
 function StatCardSkeleton() {
   return (
-    <div className="flex items-center gap-4 rounded-xl border border-border bg-white p-5">
+    <div className="glass-card flex items-center gap-4 rounded-2xl p-5">
       <Skeleton className="size-12 shrink-0 rounded-xl" />
       <div className="flex-1 space-y-2">
         <Skeleton className="h-3 w-24" />
@@ -78,7 +78,7 @@ const COLORFUL_FALLBACK = "#9CA3AF";
 
 function ChartSkeleton({ height = 320 }: { height?: number }) {
   return (
-    <div className="rounded-xl border border-border bg-white p-5">
+    <div className="glass-card-subtle rounded-2xl p-5">
       <Skeleton className="h-5 w-48" />
       <Skeleton className="mt-2 h-3 w-32" />
       <Skeleton className="mt-4 w-full" style={{ height }} />
@@ -122,7 +122,7 @@ export default function DashboardPage() {
   const activitiesLoading = activitiesQuery.isLoading;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 rounded-xl bg-gradient-to-b from-[#e8f5e9]/30 via-transparent to-transparent -mx-4 -mt-6 px-4 pt-6 sm:-mx-6 sm:-mt-8 sm:px-6 sm:pt-8">
       {/* Header */}
       <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <div className="space-y-1">
