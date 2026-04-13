@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { and, asc, eq, ilike, or, type SQL } from "drizzle-orm";
+import { and, asc, eq, ilike, inArray, or, type SQL } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { activityLog, employee, user } from "@/lib/db/schema";
@@ -32,6 +32,7 @@ interface ExportFilterBody {
 interface ExportRequestBody {
   filter?: ExportFilterBody;
   columns?: ExportColumnSet;
+  selectedIds?: number[];
 }
 
 function fail(
@@ -72,9 +73,10 @@ export async function POST(request: Request): Promise<NextResponse> {
 
   const filter = body.filter ?? {};
   const columnSet: ExportColumnSet = body.columns === "basic" ? "basic" : "all";
+  const selectedIds = body.selectedIds ?? [];
 
-  // Build WHERE conditions sama persis seperti GET /api/employees — termasuk
-  // filter status = 'active' agar soft-deleted tidak ikut ter-export.
+  // Build WHERE conditions — always include status = 'active' to exclude
+  // soft-deleted records.
   const conditions: SQL[] = [eq(employee.status, "active")];
 
   // Provider-scoped super admins can only export their own provider's employees.
@@ -82,30 +84,36 @@ export async function POST(request: Request): Promise<NextResponse> {
     conditions.push(eq(employee.provider, exportProviderScope));
   }
 
-  const search = filter.search?.trim() ?? "";
-  if (search.length > 0) {
-    const pattern = `%${search}%`;
-    const searchCondition = or(
-      ilike(employee.nama_lengkap, pattern),
-      ilike(employee.nip, pattern),
-      ilike(employee.nik, pattern),
-    );
-    if (searchCondition) conditions.push(searchCondition);
-  }
-  if (filter.status_pegawai) {
-    conditions.push(eq(employee.status_pegawai, filter.status_pegawai));
-  }
-  if (filter.status_kontrak) {
-    conditions.push(eq(employee.status_kontrak, filter.status_kontrak));
-  }
-  if (filter.unit_organisasi) {
-    conditions.push(eq(employee.unit_organisasi, filter.unit_organisasi));
-  }
-  if (filter.provider) {
-    conditions.push(eq(employee.provider, filter.provider));
-  }
-  if (filter.status_kerja) {
-    conditions.push(eq(employee.status_kerja, filter.status_kerja));
+  // If specific IDs are selected, filter by those IDs and skip other filters.
+  if (selectedIds.length > 0) {
+    conditions.push(inArray(employee.id, selectedIds));
+  } else {
+    // Apply search & filter only when no specific IDs are selected.
+    const search = filter.search?.trim() ?? "";
+    if (search.length > 0) {
+      const pattern = `%${search}%`;
+      const searchCondition = or(
+        ilike(employee.nama_lengkap, pattern),
+        ilike(employee.nip, pattern),
+        ilike(employee.nik, pattern),
+      );
+      if (searchCondition) conditions.push(searchCondition);
+    }
+    if (filter.status_pegawai) {
+      conditions.push(eq(employee.status_pegawai, filter.status_pegawai));
+    }
+    if (filter.status_kontrak) {
+      conditions.push(eq(employee.status_kontrak, filter.status_kontrak));
+    }
+    if (filter.unit_organisasi) {
+      conditions.push(eq(employee.unit_organisasi, filter.unit_organisasi));
+    }
+    if (filter.provider) {
+      conditions.push(eq(employee.provider, filter.provider));
+    }
+    if (filter.status_kerja) {
+      conditions.push(eq(employee.status_kerja, filter.status_kerja));
+    }
   }
 
   const whereClause = and(...conditions);
@@ -190,6 +198,7 @@ export async function POST(request: Request): Promise<NextResponse> {
           filter,
           columns: columnSet,
           total_rows: records.length,
+          selected_ids: selectedIds.length > 0 ? selectedIds : undefined,
         },
         ip_address: request.headers.get("x-forwarded-for") ?? null,
         user_agent: request.headers.get("user-agent") ?? null,

@@ -19,6 +19,7 @@ export type ExportColumnSet = "all" | "basic";
 export interface ExportPayload {
   filter?: ExportFilter;
   columns?: ExportColumnSet;
+  selectedIds?: number[];
 }
 
 // Extract filename dari header Content-Disposition. Fallback ke nama default

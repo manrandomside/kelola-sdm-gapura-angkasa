@@ -1,8 +1,8 @@
 "use client";
 
-import { AlertTriangle, Clock, Download, Plus, Users } from "lucide-react";
+import { AlertTriangle, CheckSquare, Clock, Download, Plus, Users, X } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { EmployeeTable } from "@/components/employees/employee-table";
 import { ExportDialog } from "@/components/import-export/export-dialog";
@@ -12,6 +12,7 @@ import { SearchInput } from "@/components/shared/search-input";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { useEmployees } from "@/hooks/use-employees";
+import { useExportExcel } from "@/hooks/use-export";
 import { ROUTES } from "@/lib/constants/routes";
 import { cn } from "@/lib/utils";
 import { useFilterStore } from "@/stores/filter-store";
@@ -61,6 +62,8 @@ type ContractTab = "all" | "expiring" | "expired";
 export default function EmployeesPage() {
   const { user } = useAuth();
   const [contractTab, setContractTab] = useState<ContractTab>("all");
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const exportSelectedMutation = useExportExcel();
 
   const {
     search,
@@ -80,6 +83,16 @@ export default function EmployeesPage() {
     toggleSort,
     activeFilterCount,
   } = useFilterStore();
+
+  // Clear selection when page, tab, or filters change.
+  const clearKey = `${page}-${contractTab}-${search}-${status_pegawai}-${status_kontrak}-${unit_organisasi}-${provider}-${status_kerja}`;
+  const prevClearKey = useRef(clearKey);
+  useEffect(() => {
+    if (prevClearKey.current !== clearKey) {
+      prevClearKey.current = clearKey;
+      setSelectedIds(new Set());
+    }
+  }, [clearKey]);
 
   const query = useEmployees({
     page,
@@ -119,8 +132,17 @@ export default function EmployeesPage() {
 
   const canEdit = user?.role === "super_admin" || user?.role === "admin";
   const activeCount = activeFilterCount();
+  const selectionCount = selectedIds.size;
 
   const [exportOpen, setExportOpen] = useState(false);
+
+  const handleExportSelected = useCallback(() => {
+    if (selectionCount === 0) return;
+    exportSelectedMutation.mutate({
+      selectedIds: Array.from(selectedIds),
+      columns: "all",
+    });
+  }, [selectedIds, selectionCount, exportSelectedMutation]);
 
   return (
     <div className="space-y-6">
@@ -143,10 +165,13 @@ export default function EmployeesPage() {
             variant="outline"
             size="lg"
             className="gap-1.5"
-            onClick={() => setExportOpen(true)}
+            onClick={selectionCount > 0 ? handleExportSelected : () => setExportOpen(true)}
+            disabled={exportSelectedMutation.isPending}
           >
             <Download className="size-4" />
-            Export
+            {selectionCount > 0
+              ? `Export ${selectionCount} Terpilih`
+              : "Export"}
           </Button>
           {canEdit && (
             <Button
@@ -268,6 +293,35 @@ export default function EmployeesPage() {
         />
       </div>
 
+      {/* Selection bar */}
+      {selectionCount > 0 && (
+        <div className="flex items-center gap-3 rounded-xl border-l-4 border-primary bg-primary/5 px-4 py-3 animate-in fade-in slide-in-from-top-1 duration-200">
+          <CheckSquare className="size-4 text-primary" />
+          <span className="text-sm font-semibold text-foreground">
+            {selectionCount} karyawan dipilih
+          </span>
+          <div className="flex-1" />
+          <Button
+            size="sm"
+            className="gap-1.5"
+            onClick={handleExportSelected}
+            disabled={exportSelectedMutation.isPending}
+          >
+            <Download className="size-3.5" />
+            Export {selectionCount} Terpilih
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-1.5 text-muted-foreground"
+            onClick={() => setSelectedIds(new Set())}
+          >
+            <X className="size-3.5" />
+            Hapus Pilihan
+          </Button>
+        </div>
+      )}
+
       {/* Error state */}
       {query.isError && (
         <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
@@ -287,6 +341,8 @@ export default function EmployeesPage() {
         onSort={toggleSort}
         canEdit={canEdit}
         userRole={user?.role ?? "staff"}
+        selectedIds={selectedIds}
+        onSelectionChange={setSelectedIds}
       />
 
       {/* Pagination */}
@@ -298,7 +354,7 @@ export default function EmployeesPage() {
         onPageChange={setPage}
       />
 
-      {/* Export dialog */}
+      {/* Export dialog (opens when no selection — full/filtered export) */}
       <ExportDialog
         open={exportOpen}
         onOpenChange={setExportOpen}

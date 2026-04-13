@@ -18,6 +18,7 @@ import { ContractBadge } from "@/components/employees/contract-badge";
 import { DeleteEmployeeDialog } from "@/components/employees/delete-employee-dialog";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -51,6 +52,8 @@ interface EmployeeTableProps {
   onSort: (column: string) => void;
   canEdit: boolean;
   userRole: UserRole;
+  selectedIds: Set<number>;
+  onSelectionChange: (ids: Set<number>) => void;
 }
 
 interface ColumnDef {
@@ -61,7 +64,7 @@ interface ColumnDef {
   headClassName?: string;
 }
 
-const COLUMNS: ColumnDef[] = [
+const DATA_COLUMNS: ColumnDef[] = [
   { key: "no", header: "No", sortable: false, className: "w-[60px] text-center", headClassName: "w-[60px] text-center" },
   { key: "nama_lengkap", header: "Nama Lengkap", sortable: true, className: "min-w-[220px]" },
   { key: "nip", header: "NIP", sortable: true, className: "w-[130px]" },
@@ -101,12 +104,18 @@ function EmptyState() {
   );
 }
 
+/** Total columns: 1 checkbox + DATA_COLUMNS */
+const TOTAL_COL_COUNT = DATA_COLUMNS.length + 1;
+
 function LoadingRows({ limit }: { limit: number }) {
   return (
     <>
       {Array.from({ length: Math.min(limit, 8) }).map((_, i) => (
         <TableRow key={`skeleton-${i}`}>
-          {COLUMNS.map((col) => (
+          <TableCell className="w-[44px] text-center">
+            <Skeleton className="mx-auto size-4" />
+          </TableCell>
+          {DATA_COLUMNS.map((col) => (
             <TableCell key={col.key} className={col.className}>
               <Skeleton className="h-5 w-full" />
             </TableCell>
@@ -126,6 +135,8 @@ export function EmployeeTable({
   order,
   onSort,
   canEdit,
+  selectedIds,
+  onSelectionChange,
 }: EmployeeTableProps) {
   const router = useRouter();
   const [deleteTarget, setDeleteTarget] = useState<{
@@ -152,12 +163,46 @@ export function EmployeeTable({
     });
   }
 
+  // Selection helpers
+  const pageIds = employees.map((e) => e.id);
+  const selectedOnPage = pageIds.filter((id) => selectedIds.has(id));
+  const allOnPageSelected = pageIds.length > 0 && selectedOnPage.length === pageIds.length;
+  const someOnPageSelected = selectedOnPage.length > 0 && !allOnPageSelected;
+
+  function handleSelectAll(checked: boolean) {
+    const next = new Set(selectedIds);
+    if (checked) {
+      for (const id of pageIds) next.add(id);
+    } else {
+      for (const id of pageIds) next.delete(id);
+    }
+    onSelectionChange(next);
+  }
+
+  function handleToggleRow(id: number) {
+    const next = new Set(selectedIds);
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
+    onSelectionChange(next);
+  }
+
   return (
     <div className="rounded-xl border border-border bg-card">
       <Table>
         <TableHeader>
           <TableRow className="bg-muted/30 hover:bg-muted/30">
-            {COLUMNS.map((col) => {
+            <TableHead className="w-[44px] text-center">
+              <Checkbox
+                checked={allOnPageSelected}
+                indeterminate={someOnPageSelected}
+                onCheckedChange={handleSelectAll}
+                aria-label="Pilih semua di halaman ini"
+              />
+            </TableHead>
+            {DATA_COLUMNS.map((col) => {
               const isActiveSort = sort === col.key;
               return (
                 <TableHead
@@ -182,7 +227,7 @@ export function EmployeeTable({
             <LoadingRows limit={limit} />
           ) : employees.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={COLUMNS.length} className="p-0">
+              <TableCell colSpan={TOTAL_COL_COUNT} className="p-0">
                 <EmptyState />
               </TableCell>
             </TableRow>
@@ -191,9 +236,10 @@ export function EmployeeTable({
               const rowNumber = (page - 1) * limit + idx + 1;
               const detailHref = ROUTES.EMPLOYEES_DETAIL(emp.id);
               const editHref = ROUTES.EMPLOYEES_EDIT(emp.id);
+              const isSelected = selectedIds.has(emp.id);
 
               const contractInfo = getContractInfo(emp.tmt_berakhir_kerja);
-              const rowBg =
+              const contractBg =
                 contractInfo.status === "danger"
                   ? "bg-red-50/30"
                   : contractInfo.status === "expired"
@@ -201,7 +247,20 @@ export function EmployeeTable({
                     : "";
 
               return (
-                <TableRow key={emp.id} className={cn("group hover:bg-gray-50", rowBg)}>
+                <TableRow
+                  key={emp.id}
+                  className={cn(
+                    "group hover:bg-gray-50",
+                    isSelected ? "bg-primary/5 hover:bg-primary/5" : contractBg,
+                  )}
+                >
+                  <TableCell className="w-[44px] text-center">
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={() => handleToggleRow(emp.id)}
+                      aria-label={`Pilih ${emp.nama_lengkap}`}
+                    />
+                  </TableCell>
                   <TableCell className="w-[60px] text-center text-sm text-muted-foreground">
                     {rowNumber}
                   </TableCell>
