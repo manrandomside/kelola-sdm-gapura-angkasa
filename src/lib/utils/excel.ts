@@ -3,6 +3,14 @@ import * as XLSXStyle from "xlsx-js-style";
 
 import { formatDateWITA, parseFlexibleDate, toISODateString } from "@/lib/utils/date";
 import {
+  EXCEL_COLUMNS,
+  buildHeaderCellText,
+  getDataCellStyle,
+  getHeaderCellStyle,
+  setColumnWidths,
+  setRowHeights,
+} from "@/lib/utils/excel-template";
+import {
   JENIS_KELAMIN_OPTIONS,
   KELOMPOK_JABATAN_OPTIONS,
   PROVIDER_OPTIONS,
@@ -249,19 +257,38 @@ function normalizeHeader(header: string): string {
   return firstLine.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
-// Mapping satu header ke nama field database. Dua-pass:
-// 1) Lookup langsung.
-// 2) Strip trailing parenthesized group seperti "(dd/mm/yyyy)" lalu lookup
-//    lagi — namun hanya jika hasil stripping masih berbeda dan bukan entry
-//    yang memang perlu parens (masa kerja (bulan) / (tahun)).
+// Collapse multi-line header to single line, join with space, lowercase, trim.
+// Used when first-line-only matching fails (e.g. "MASA KERJA\n(BULAN)").
+function normalizeHeaderFull(header: string): string {
+  return header.replace(/\r?\n/g, " ").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+// Mapping satu header ke nama field database. Multi-pass:
+// 1) First-line lookup langsung.
+// 2) Strip trailing parenthesized group dari first-line.
+// 3) Full text (all lines joined) lookup — handles "MASA KERJA\n(BULAN)".
+// 4) Strip all sub-header hints from full text.
 function lookupField(header: string): NormalizedField | null {
+  // Pass 1: first line only
   const normalized = normalizeHeader(header);
   if (COLUMN_MAP[normalized]) return COLUMN_MAP[normalized];
 
+  // Pass 2: first line, strip trailing parens
   const stripped = normalized.replace(/\s*\([^)]*\)\s*$/, "").trim();
   if (stripped && stripped !== normalized && COLUMN_MAP[stripped]) {
     return COLUMN_MAP[stripped];
   }
+
+  // Pass 3: full text joined — matches "masa kerja (bulan)" etc.
+  const full = normalizeHeaderFull(header);
+  if (full !== normalized && COLUMN_MAP[full]) return COLUMN_MAP[full];
+
+  // Pass 4: full text with trailing parens stripped
+  const fullStripped = full.replace(/\s*\([^)]*\)\s*$/, "").trim();
+  if (fullStripped && fullStripped !== full && COLUMN_MAP[fullStripped]) {
+    return COLUMN_MAP[fullStripped];
+  }
+
   return null;
 }
 
@@ -880,126 +907,252 @@ function toCellValue(
   return String(raw);
 }
 
-// Style untuk baris header: background #439454, text putih, bold, center.
-const HEADER_STYLE = {
-  font: { name: "Figtree", bold: true, color: { rgb: "FFFFFFFF" }, sz: 11 },
-  fill: { patternType: "solid", fgColor: { rgb: "FF439454" } },
-  alignment: { horizontal: "center", vertical: "center", wrapText: true },
-  border: {
-    top: { style: "thin", color: { rgb: "FF2D5A37" } },
-    bottom: { style: "thin", color: { rgb: "FF2D5A37" } },
-    left: { style: "thin", color: { rgb: "FF2D5A37" } },
-    right: { style: "thin", color: { rgb: "FF2D5A37" } },
-  },
-} as const;
-
-const DATA_STYLE = {
-  font: { name: "Figtree", sz: 10 },
-  alignment: { vertical: "center", wrapText: false },
-} as const;
-
 export function generateExportExcel(
   employees: ReadonlyArray<ExportEmployeeRecord>,
   options: GenerateExportOptions = {},
 ): ArrayBuffer {
   const columnSet: ExportColumnSet = options.columns ?? "all";
-  const sheetName = options.sheetName ?? "Data SDM";
-  const columns =
-    columnSet === "basic" ? EXPORT_COLUMNS_BASIC : EXPORT_COLUMNS_ALL;
 
-  // Build cell data row-by-row dengan style inline (xlsx-js-style membaca
-  // property `s` pada setiap cell object).
-  type StyledCell = { v: string | number; t: "s" | "n"; s: unknown };
-  const aoa: StyledCell[][] = [];
+  // For "basic" mode, use the simplified column list with old-style layout.
+  if (columnSet === "basic") {
+    return generateBasicExport(employees);
+  }
 
-  // Header row.
-  aoa.push(
-    columns.map((col) => ({
-      v: col.header,
-      t: "s",
-      s: HEADER_STYLE,
-    })),
+  // Full export: use EXCEL_COLUMNS (45 cols) with new layout.
+  const sheetName = "DATABASE SDM";
+  const headerStyle = getHeaderCellStyle();
+  const totalDataRows = employees.length;
+  const totalRows = totalDataRows + 2; // row 0 spacer + row 1 header + data
+  const totalCols = EXCEL_COLUMNS.length;
+
+  const ws: XLSXStyle.WorkSheet = {};
+  ws["!ref"] = XLSXStyle.utils.encode_range(
+    { r: 0, c: 0 },
+    { r: totalRows - 1, c: totalCols - 1 },
   );
 
-  // Data rows.
-  employees.forEach((record, index) => {
-    const row: StyledCell[] = columns.map((col) => {
-      const value = toCellValue(record, col, index);
-      const isNumber = typeof value === "number";
-      return {
+  // Row 0: empty spacer
+  for (let c = 0; c < totalCols; c++) {
+    const addr = XLSXStyle.utils.encode_cell({ r: 0, c });
+    ws[addr] = { v: "", t: "s", s: {} };
+  }
+
+  // Row 1: styled header with multi-line text
+  for (let c = 0; c < totalCols; c++) {
+    const col = EXCEL_COLUMNS[c]!;
+    const addr = XLSXStyle.utils.encode_cell({ r: 1, c });
+    ws[addr] = { v: buildHeaderCellText(col), t: "s", s: headerStyle };
+  }
+
+  // Row 2+: data
+  for (let rowIdx = 0; rowIdx < totalDataRows; rowIdx++) {
+    const record = employees[rowIdx]!;
+    for (let c = 0; c < totalCols; c++) {
+      const col = EXCEL_COLUMNS[c]!;
+      const cellStyle = getDataCellStyle(col.key);
+
+      let value: string | number = "";
+      if (col.key === "no") {
+        value = rowIdx + 1;
+      } else {
+        const fieldKey = col.key as keyof ExportEmployeeRecord;
+        const raw = record[fieldKey];
+        if (raw == null) {
+          value = "";
+        } else if (col.isDate && typeof raw === "string") {
+          value = formatDateWITA(raw, "dd/MM/yyyy") || "";
+        } else if (typeof raw === "number") {
+          value = Number.isFinite(raw) ? raw : "";
+        } else {
+          value = String(raw);
+        }
+      }
+
+      const addr = XLSXStyle.utils.encode_cell({ r: rowIdx + 2, c });
+      ws[addr] = {
         v: value,
-        t: isNumber ? "n" : "s",
-        s: DATA_STYLE,
+        t: typeof value === "number" ? "n" : "s",
+        s: cellStyle,
       };
-    });
-    aoa.push(row);
-  });
-
-  // Konversi ke worksheet via xlsx-js-style.
-  const sheet = XLSXStyle.utils.aoa_to_sheet(
-    aoa.map((row) => row.map((cell) => cell.v)),
-  );
-
-  // Re-assign cell objects dengan style (aoa_to_sheet tidak pertahankan `s`).
-  for (let r = 0; r < aoa.length; r++) {
-    for (let c = 0; c < aoa[r]!.length; c++) {
-      const addr = XLSXStyle.utils.encode_cell({ r, c });
-      const cell = aoa[r]![c]!;
-      sheet[addr] = { v: cell.v, t: cell.t, s: cell.s };
     }
   }
 
-  // Column widths: max antara panjang header dan panjang content (capped).
-  sheet["!cols"] = columns.map((col) => {
-    let maxLen = col.header.length;
-    for (let r = 0; r < employees.length; r++) {
-      const value = toCellValue(employees[r]!, col, r);
-      const len = String(value).length;
-      if (len > maxLen) maxLen = len;
-    }
-    return { wch: Math.min(Math.max(maxLen + 2, 10), 40) };
-  });
-
-  // Header row height sedikit lebih tinggi agar styling terasa.
-  sheet["!rows"] = [{ hpt: 24 }];
-
-  // Freeze header row.
-  sheet["!freeze"] = { xSplit: 0, ySplit: 1 };
+  setColumnWidths(ws);
+  setRowHeights(ws);
+  ws["!freeze"] = { xSplit: 0, ySplit: 2 };
 
   const workbook = XLSXStyle.utils.book_new();
-  XLSXStyle.utils.book_append_sheet(workbook, sheet, sheetName);
+  XLSXStyle.utils.book_append_sheet(workbook, ws, sheetName);
 
-  const buffer = XLSXStyle.write(workbook, {
+  return XLSXStyle.write(workbook, {
     type: "array",
     bookType: "xlsx",
     cellStyles: true,
   }) as ArrayBuffer;
+}
 
-  return buffer;
+/** Basic export (15 columns) — simpler layout, header on row 0. */
+function generateBasicExport(
+  employees: ReadonlyArray<ExportEmployeeRecord>,
+): ArrayBuffer {
+  const columns = EXPORT_COLUMNS_BASIC;
+  const headerStyle = getHeaderCellStyle();
+  const totalRows = employees.length + 1;
+  const totalCols = columns.length;
+
+  const ws: XLSXStyle.WorkSheet = {};
+  ws["!ref"] = XLSXStyle.utils.encode_range(
+    { r: 0, c: 0 },
+    { r: totalRows - 1, c: totalCols - 1 },
+  );
+
+  // Row 0: header
+  for (let c = 0; c < totalCols; c++) {
+    const addr = XLSXStyle.utils.encode_cell({ r: 0, c });
+    ws[addr] = { v: columns[c]!.header, t: "s", s: headerStyle };
+  }
+
+  // Row 1+: data
+  employees.forEach((record, rowIdx) => {
+    for (let c = 0; c < totalCols; c++) {
+      const col = columns[c]!;
+      const value = toCellValue(record, col, rowIdx);
+      const cellStyle = getDataCellStyle(col.field === "no_urut" ? "no" : col.field);
+      const addr = XLSXStyle.utils.encode_cell({ r: rowIdx + 1, c });
+      ws[addr] = {
+        v: value,
+        t: typeof value === "number" ? "n" : "s",
+        s: cellStyle,
+      };
+    }
+  });
+
+  ws["!cols"] = columns.map((col) => ({
+    wch: Math.min(Math.max(col.header.length + 2, 10), 40),
+  }));
+  ws["!rows"] = [{ hpt: 24 }];
+  ws["!freeze"] = { xSplit: 0, ySplit: 1 };
+
+  const workbook = XLSXStyle.utils.book_new();
+  XLSXStyle.utils.book_append_sheet(workbook, ws, "Data SDM");
+
+  return XLSXStyle.write(workbook, {
+    type: "array",
+    bookType: "xlsx",
+    cellStyles: true,
+  }) as ArrayBuffer;
 }
 
 // ============================================================================
-// generateImportTemplate — buat file .xlsx template kosong dengan 45 kolom
-// header. Digunakan oleh API route GET /api/import/template.
+// generateImportTemplate — buat file .xlsx template dengan 45 kolom header,
+// styled header hijau, dan sheet panduan.
 // ============================================================================
 export function generateImportTemplate(): ArrayBuffer {
-  const sheet = XLSX.utils.aoa_to_sheet([[...TEMPLATE_HEADERS]]);
+  const headerStyle = getHeaderCellStyle();
+  const totalCols = EXCEL_COLUMNS.length;
 
-  // Auto-width sederhana berdasarkan panjang header.
-  sheet["!cols"] = TEMPLATE_HEADERS.map((h) => ({
-    wch: Math.min(Math.max(h.length + 2, 12), 32),
-  }));
+  // --- Sheet 1: DATABASE SDM ---
+  const ws: XLSXStyle.WorkSheet = {};
+  // Range: row 0 (spacer) + row 1 (header) + rows 2-101 (empty data area)
+  ws["!ref"] = XLSXStyle.utils.encode_range(
+    { r: 0, c: 0 },
+    { r: 101, c: totalCols - 1 },
+  );
 
-  // Freeze header row agar tidak hilang saat scroll.
-  sheet["!freeze"] = { xSplit: 0, ySplit: 1 };
+  // Row 0: empty spacer
+  for (let c = 0; c < totalCols; c++) {
+    const addr = XLSXStyle.utils.encode_cell({ r: 0, c });
+    ws[addr] = { v: "", t: "s", s: {} };
+  }
 
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, sheet, "Template Import SDM");
+  // Row 1: styled header
+  for (let c = 0; c < totalCols; c++) {
+    const col = EXCEL_COLUMNS[c]!;
+    const addr = XLSXStyle.utils.encode_cell({ r: 1, c });
+    ws[addr] = { v: buildHeaderCellText(col), t: "s", s: headerStyle };
+  }
 
-  const buffer = XLSX.write(workbook, {
+  setColumnWidths(ws);
+  setRowHeights(ws);
+  ws["!freeze"] = { xSplit: 0, ySplit: 2 };
+
+  // --- Sheet 2: PANDUAN ---
+  const guideStyle = {
+    font: { name: "Arial", sz: 11 },
+  };
+  const guideBoldStyle = {
+    font: { name: "Arial", sz: 11, bold: true },
+  };
+  const guideTitleStyle = {
+    font: { name: "Arial", sz: 14, bold: true },
+  };
+
+  const guideWs: XLSXStyle.WorkSheet = {};
+  const guideLines: Array<{ row: number; text: string; style: unknown }> = [
+    { row: 0, text: "PANDUAN PENGISIAN TEMPLATE IMPORT DATA SDM", style: guideTitleStyle },
+    { row: 2, text: "Aturan Umum:", style: guideBoldStyle },
+    { row: 3, text: "1. Isi data mulai dari baris ke-3 (di bawah header hijau)", style: guideStyle },
+    { row: 4, text: "2. Kolom NIP dan NAMA LENGKAP wajib diisi", style: guideStyle },
+    { row: 5, text: "3. Format tanggal: dd/mm/yyyy (contoh: 01/05/2025)", style: guideStyle },
+    { row: 6, text: "4. Jenis Kelamin: L (Laki-laki) atau P (Perempuan)", style: guideStyle },
+    { row: 7, text: "5. Status Pegawai: PEGAWAI TETAP, PKWT, atau TAD", style: guideStyle },
+    { row: 8, text: "6. Status Kontrak: PEGAWAI TETAP, PKWT, PAKET SDM, atau PAKET PEKERJAAN", style: guideStyle },
+    { row: 9, text: "7. Status Kerja: Aktif atau Non Aktif", style: guideStyle },
+    { row: 10, text: "8. Lokasi Kerja selalu: Bandar Udara Ngurah Rai", style: guideStyle },
+    { row: 11, text: "9. Cabang selalu: DPS", style: guideStyle },
+    { row: 12, text: "10. Jika NIP sudah ada di sistem, data akan di-UPDATE (bukan duplikat)", style: guideStyle },
+    { row: 13, text: "11. Setiap karyawan yang berhasil di-import otomatis mendapat akun login (NIP = password)", style: guideStyle },
+    { row: 15, text: "Daftar Provider:", style: guideBoldStyle },
+  ];
+
+  // Add provider list
+  PROVIDER_OPTIONS.forEach((provider, idx) => {
+    guideLines.push({
+      row: 16 + idx,
+      text: `${idx + 1}. ${provider}`,
+      style: guideStyle,
+    });
+  });
+
+  const unitOrgStart = 16 + PROVIDER_OPTIONS.length + 1;
+  guideLines.push({
+    row: unitOrgStart,
+    text: "Daftar Unit Organisasi:",
+    style: guideBoldStyle,
+  });
+
+  const unitList = [
+    "Airside (MO)", "Landside (ME)", "GSE (MF)", "GH (MS)",
+    "Back Office (MU, MK)", "Ancillary (MB)", "Avsec (MQ)", "EGM", "GM",
+  ];
+  unitList.forEach((unit, idx) => {
+    guideLines.push({
+      row: unitOrgStart + 1 + idx,
+      text: `${idx + 1}. ${unit}`,
+      style: guideStyle,
+    });
+  });
+
+  const maxRow = guideLines[guideLines.length - 1]!.row;
+  guideWs["!ref"] = XLSXStyle.utils.encode_range(
+    { r: 0, c: 0 },
+    { r: maxRow, c: 0 },
+  );
+  guideWs["!cols"] = [{ wch: 80 }];
+
+  for (const line of guideLines) {
+    const addr = XLSXStyle.utils.encode_cell({ r: line.row, c: 0 });
+    guideWs[addr] = { v: line.text, t: "s", s: line.style };
+  }
+
+  // Build workbook
+  const workbook = XLSXStyle.utils.book_new();
+  XLSXStyle.utils.book_append_sheet(workbook, ws, "DATABASE SDM");
+  XLSXStyle.utils.book_append_sheet(workbook, guideWs, "PANDUAN");
+
+  return XLSXStyle.write(workbook, {
     type: "array",
     bookType: "xlsx",
+    cellStyles: true,
   }) as ArrayBuffer;
-
-  return buffer;
 }

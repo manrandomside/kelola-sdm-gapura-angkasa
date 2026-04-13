@@ -173,8 +173,8 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     const buffer = generateExportExcel(records, { columns: columnSet });
 
-    const dateStamp = formatDateWITA(new Date(), "yyyy-MM-dd");
-    const fileName = `SDM_GapuraAngkasa_${dateStamp}.xlsx`;
+    const dateStamp = formatDateWITA(new Date(), "dd-MM-yyyy");
+    const fileName = `Data_SDM_GapuraAngkasa_${dateStamp}.xlsx`;
 
     // Activity log — non-fatal.
     try {
