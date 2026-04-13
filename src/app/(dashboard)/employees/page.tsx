@@ -213,7 +213,10 @@ export default function EmployeesPage() {
           )}
         >
           <Users className="size-4" />
-          Semua
+          <span className="flex flex-col items-start leading-tight">
+            <span>Semua</span>
+            <span className="text-[10px] font-normal text-muted-foreground">(termasuk non-aktif)</span>
+          </span>
           <span className={cn(
             "rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums",
             contractTab === "all"

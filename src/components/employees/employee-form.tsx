@@ -459,6 +459,27 @@ export function EmployeeForm({
     return set;
   }, [errors]);
 
+  // Track which tabs have data filled in.
+  const watchedValues = watch();
+  const tabsWithData = useMemo(() => {
+    const set = new Set<TabKey>();
+    // pribadi: nama_lengkap is the key required field
+    if (watchedValues.nama_lengkap?.trim()) set.add("pribadi");
+    // kepegawaian: status_pegawai is key required field
+    if (watchedValues.status_pegawai?.trim()) set.add("kepegawaian");
+    // pendidikan: any of pendidikan or instansi_pendidikan filled
+    if (watchedValues.pendidikan?.trim() || watchedValues.instansi_pendidikan?.trim()) set.add("pendidikan");
+    // tambahan: any seragam-related field filled
+    if (
+      watchedValues.height?.toString().trim() ||
+      watchedValues.weight?.toString().trim() ||
+      (watchedValues.jenis_sepatu as string)?.trim() ||
+      (watchedValues.ukuran_sepatu as string)?.trim() ||
+      watchedValues.seragam?.trim()
+    ) set.add("tambahan");
+    return set;
+  }, [watchedValues]);
+
   async function handleNipBlur(value: string) {
     const trimmed = value.trim();
     if (!trimmed) {
@@ -534,9 +555,9 @@ export function EmployeeForm({
         router.push(ROUTES.EMPLOYEES_DETAIL(employeeId));
         router.refresh();
       } else {
-        await createEmployee(values);
+        const result = await createEmployee(values);
         toast.success("Karyawan berhasil ditambahkan");
-        router.push(ROUTES.EMPLOYEES);
+        router.push(ROUTES.EMPLOYEES_DETAIL(result.employee.id));
         router.refresh();
       }
     } catch (err) {
@@ -591,21 +612,30 @@ export function EmployeeForm({
         onValueChange={(value) => setActiveTab(value as TabKey)}
       >
         <TabsList className="h-auto w-full justify-start gap-1 bg-muted/60 p-1">
-          {(Object.keys(TAB_LABELS) as TabKey[]).map((key) => (
-            <TabsTrigger
-              key={key}
-              value={key}
-              className="h-9 gap-2 px-4"
-            >
-              <span>{TAB_LABELS[key]}</span>
-              {tabsWithErrors.has(key) && (
+          {(Object.keys(TAB_LABELS) as TabKey[]).map((key) => {
+            const hasError = tabsWithErrors.has(key);
+            const hasFilled = tabsWithData.has(key);
+            return (
+              <TabsTrigger
+                key={key}
+                value={key}
+                className="h-9 gap-2 px-4"
+              >
+                <span>{TAB_LABELS[key]}</span>
                 <span
-                  aria-label="Ada error"
-                  className="inline-block size-2 rounded-full bg-destructive"
+                  aria-label={hasError ? "Ada error" : hasFilled ? "Sudah diisi" : "Belum diisi"}
+                  className={cn(
+                    "inline-block size-2 rounded-full",
+                    hasError
+                      ? "bg-destructive"
+                      : hasFilled
+                        ? "bg-green-500"
+                        : "bg-gray-300",
+                  )}
                 />
-              )}
-            </TabsTrigger>
-          ))}
+              </TabsTrigger>
+            );
+          })}
         </TabsList>
 
         {/* TAB 1 - DATA PRIBADI */}
@@ -843,12 +873,17 @@ export function EmployeeForm({
                   id="lokasi_kerja"
                   value="Bandar Udara Ngurah Rai"
                   readOnly
-                  className="bg-muted/40"
+                  className="bg-muted/50 text-muted-foreground cursor-not-allowed"
                 />
               </FieldRow>
 
               <FieldRow label="Cabang" htmlFor="cabang">
-                <Input id="cabang" value="DPS" readOnly className="bg-muted/40" />
+                <Input
+                  id="cabang"
+                  value="DPS"
+                  readOnly
+                  className="bg-muted/50 text-muted-foreground cursor-not-allowed"
+                />
               </FieldRow>
 
               <FieldRow

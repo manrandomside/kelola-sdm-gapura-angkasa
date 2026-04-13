@@ -46,7 +46,10 @@
       "Bash(git reset:*)",
       "Bash(npx yaml-lint:*)",
       "Bash(git:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(for f:*)",
+      "Bash(do sed:*)",
+      "Bash(done)"
     ]
   }
 }

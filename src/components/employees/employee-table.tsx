@@ -250,11 +250,12 @@ export function EmployeeTable({
                 <TableRow
                   key={emp.id}
                   className={cn(
-                    "group hover:bg-gray-50",
+                    "group cursor-pointer hover:bg-gray-50",
                     isSelected ? "bg-primary/5 hover:bg-primary/5" : contractBg,
                   )}
+                  onClick={() => router.push(detailHref)}
                 >
-                  <TableCell className="w-[44px] text-center">
+                  <TableCell className="w-[44px] text-center" onClick={(e) => e.stopPropagation()}>
                     <Checkbox
                       checked={isSelected}
                       onCheckedChange={() => handleToggleRow(emp.id)}
@@ -306,7 +307,7 @@ export function EmployeeTable({
                   <TableCell className="w-[170px] max-w-[170px] truncate text-sm text-muted-foreground">
                     {emp.provider ?? "-"}
                   </TableCell>
-                  <TableCell className="w-[80px] text-right">
+                  <TableCell className="w-[80px] text-right" onClick={(e) => e.stopPropagation()}>
                     <DropdownMenu>
                       <DropdownMenuTrigger
                         render={

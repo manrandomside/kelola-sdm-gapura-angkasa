@@ -122,7 +122,11 @@ export default function EmployeeDetailPage({ params }: EmployeeDetailPageProps) 
           Management Karyawan
         </Link>
         <ChevronRight className="size-4" />
-        <span className="text-foreground">Detail</span>
+        <span className="max-w-[250px] truncate text-foreground" title={emp.nama_lengkap}>
+          {emp.nama_lengkap.length > 30
+            ? `${emp.nama_lengkap.slice(0, 30)}...`
+            : emp.nama_lengkap}
+        </span>
       </nav>
 
       {/* Header Card */}
@@ -406,23 +410,31 @@ export default function EmployeeDetailPage({ params }: EmployeeDetailPageProps) 
         {/* Fisik & Seragam */}
         <TabsContent value="fisik" className="mt-6">
           <div className="rounded-xl border border-border bg-card p-6">
-            <div className="grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-2">
-              <DetailRow
-                label="Tinggi Badan"
-                value={emp.height != null ? `${emp.height} cm` : null}
-              />
-              <DetailRow
-                label="Berat Badan"
-                value={emp.weight != null ? `${emp.weight} kg` : null}
-              />
-              <DetailRow label="Jenis Sepatu" value={emp.jenis_sepatu} />
-              <DetailRow label="Ukuran Sepatu" value={emp.ukuran_sepatu} />
-              <DetailRow
-                label="Seragam"
-                value={emp.seragam}
-                className="md:col-span-2"
-              />
-            </div>
+            {emp.height || emp.weight || emp.jenis_sepatu || emp.ukuran_sepatu || emp.seragam ? (
+              <div className="grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-2">
+                <DetailRow
+                  label="Tinggi Badan"
+                  value={emp.height != null ? `${emp.height} cm` : null}
+                />
+                <DetailRow
+                  label="Berat Badan"
+                  value={emp.weight != null ? `${emp.weight} kg` : null}
+                />
+                <DetailRow label="Jenis Sepatu" value={emp.jenis_sepatu} />
+                <DetailRow label="Ukuran Sepatu" value={emp.ukuran_sepatu} />
+                <DetailRow
+                  label="Seragam"
+                  value={emp.seragam}
+                  className="md:col-span-2"
+                />
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Belum ada data seragam untuk karyawan ini.
+                </p>
+              </div>
+            )}
           </div>
         </TabsContent>
       </Tabs>

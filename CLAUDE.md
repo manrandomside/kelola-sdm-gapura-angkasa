@@ -482,18 +482,18 @@ src/
 - [x] Rekap SDM summary di dashboard — tambah subtitle: "Menampilkan 10 jabatan terbanyak"
 
 #### Daftar Karyawan Improvements
-- [ ] Tab "Semua" — tambah keterangan "(termasuk non-aktif)" agar tidak ambigu
-- [ ] Klik row — pastikan klik di mana saja pada baris langsung navigasi ke detail karyawan (bukan hanya tombol aksi)
+- [x] Tab "Semua" — tambah keterangan "(termasuk non-aktif)" agar tidak ambigu
+- [x] Klik row — pastikan klik di mana saja pada baris langsung navigasi ke detail karyawan (bukan hanya tombol aksi)
 
 #### Detail Karyawan Improvements
-- [ ] Breadcrumb — ganti "Detail" menjadi nama karyawan. Contoh: "Beranda > Daftar Karyawan > A.A GEDE AGUNG WIRAJAYA"
-- [ ] Hapus duplicate breadcrumb — pastikan hanya ada 1 breadcrumb di halaman
-- [ ] Tab Data Seragam — jika semua field kosong (jenis sepatu, ukuran sepatu, seragam semua NULL), tampilkan pesan "Belum ada data seragam" daripada 5 baris tanda "-"
+- [x] Breadcrumb — ganti "Detail" menjadi nama karyawan. Contoh: "Beranda > Daftar Karyawan > A.A GEDE AGUNG WIRAJAYA"
+- [x] Hapus duplicate breadcrumb — pastikan hanya ada 1 breadcrumb di halaman
+- [x] Tab Data Seragam — jika semua field kosong (jenis sepatu, ukuran sepatu, seragam semua NULL), tampilkan pesan "Belum ada data seragam" daripada 5 baris tanda "-"
 
 #### Form Karyawan (Create & Edit) Improvements
-- [ ] Indikator tab — dot hijau/merah di label tab untuk menunjukkan tab mana yang sudah diisi dan mana yang belum/ada error
-- [ ] Lokasi Kerja & Cabang — buat readonly/disabled karena selalu "Bandar Udara Ngurah Rai" dan "DPS", dengan visual muted agar user tidak bingung
-- [ ] Redirect setelah save — setelah berhasil simpan, redirect ke halaman detail karyawan (bukan ke daftar karyawan)
+- [x] Indikator tab — dot hijau/merah di label tab untuk menunjukkan tab mana yang sudah diisi dan mana yang belum/ada error
+- [x] Lokasi Kerja & Cabang — buat readonly/disabled karena selalu "Bandar Udara Ngurah Rai" dan "DPS", dengan visual muted agar user tidak bingung
+- [x] Redirect setelah save — setelah berhasil simpan, redirect ke halaman detail karyawan (bukan ke daftar karyawan)
 
 #### Rekap SDM Improvements
 - [x] Stat card konteks — tambah subtitle "dari X karyawan aktif" di samping atau bawah angka Total Jabatan
