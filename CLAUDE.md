@@ -469,6 +469,57 @@ src/
 - [ ] Polish: Error boundaries
 - [ ] Polish: Change password page
 
+### Phase 7: UI/UX Improvement & Landing Page
+
+#### Landing Page & Glass UI
+- [ ] Landing page: halaman baru di route / (hero, fitur, info perusahaan, footer, tombol Masuk)
+- [ ] Subtle glass UI: terapkan di dashboard (stat cards, card chart) dan sidebar — bukan full glassmorphism, hanya subtle (backdrop-blur, semi-transparan)
+
+#### Dashboard Improvements
+- [ ] Tooltip info di Breakdown TAD — ikon info (?) di card Paket SDM dan Paket Pekerjaan dengan penjelasan: "Karyawan TAD yang dikontrak melalui paket SDM" / "Karyawan TAD yang dikontrak melalui paket pekerjaan"
+- [ ] Persentase di stat card Non Aktif — tampilkan "236 (18.5%)" agar terlihat proporsi terhadap total
+- [ ] Rekap SDM summary di dashboard — tambah subtitle: "Menampilkan 10 jabatan terbanyak"
+
+#### Daftar Karyawan Improvements
+- [ ] Tab "Semua" — tambah keterangan "(termasuk non-aktif)" agar tidak ambigu
+- [ ] Klik row — pastikan klik di mana saja pada baris langsung navigasi ke detail karyawan (bukan hanya tombol aksi)
+
+#### Detail Karyawan Improvements
+- [ ] Breadcrumb — ganti "Detail" menjadi nama karyawan. Contoh: "Beranda > Daftar Karyawan > A.A GEDE AGUNG WIRAJAYA"
+- [ ] Hapus duplicate breadcrumb — pastikan hanya ada 1 breadcrumb di halaman
+- [ ] Tab Data Seragam — jika semua field kosong (jenis sepatu, ukuran sepatu, seragam semua NULL), tampilkan pesan "Belum ada data seragam" daripada 5 baris tanda "-"
+
+#### Form Karyawan (Create & Edit) Improvements
+- [ ] Indikator tab — dot hijau/merah di label tab untuk menunjukkan tab mana yang sudah diisi dan mana yang belum/ada error
+- [ ] Lokasi Kerja & Cabang — buat readonly/disabled karena selalu "Bandar Udara Ngurah Rai" dan "DPS", dengan visual muted agar user tidak bingung
+- [ ] Redirect setelah save — setelah berhasil simpan, redirect ke halaman detail karyawan (bukan ke daftar karyawan)
+
+#### Rekap SDM Improvements
+- [ ] Stat card konteks — tambah subtitle "dari X karyawan aktif" di samping atau bawah angka Total Jabatan
+- [ ] Grand Total sticky — baris Grand Total di tabel selalu terlihat saat scroll (sticky bottom)
+- [ ] Export button label — ubah menjadi "Export Excel (.xlsx)" agar jelas formatnya
+
+#### Import Improvements
+- [ ] Visual step indicator — tampilkan progress bar/step di atas (Step 1: Upload, Step 2: Preview, Step 3: Import) agar user tahu posisi mereka
+- [ ] Summary lebih actionable — setelah import selesai, tampilkan tombol yang jelas: "Lihat Detail Error", "Import Ulang", "Lihat Data Karyawan"
+- [ ] Info auto-create akun — tampilkan informasi "Setiap karyawan yang berhasil di-import otomatis mendapat akun login (NIP = password)" dengan highlight/card yang jelas, bukan teks biasa
+
+#### Riwayat Import Improvements
+- [ ] Auto-refresh atau button refresh — untuk status "Berjalan" yang stuck, tambahkan button "Refresh Status" atau auto-refresh setiap 10 detik saat ada status Berjalan
+- [ ] Kolom "Diimport Oleh" — tambahkan kolom nama user yang melakukan import
+
+#### User Management Improvements
+- [ ] Info header — tambah teks di bawah judul: "Akun dibuat otomatis saat import data karyawan. Password default = NIP."
+- [ ] Last Login — jika NULL, tampilkan "Belum pernah login" (bukan "-" atau kosong)
+
+#### Activity Log Improvements
+- [ ] Filter by tipe aktivitas — dropdown filter: Semua, Create, Update, Delete, Import, Export, Login, Auto Update
+- [ ] Filter by tanggal — date range picker untuk memilih rentang tanggal
+
+#### Sidebar Improvements
+- [ ] Riwayat Import — pindahkan dari sidebar ke dalam halaman Import saja (sebagai tab atau link), supaya sidebar lebih ringkas
+- [ ] Hide menu berdasarkan role — role staff: sembunyikan "Tambah Karyawan" dan "Import Excel" karena tidak punya akses
+
 ---
 
 ## Revisi & Penambahan (Phase 5+)
@@ -665,6 +716,36 @@ src/
   - Jika ada yang dicentang: "Export X Terpilih"
   - Jika tidak ada yang dicentang: "Export Semua" (atau sesuai filter aktif)
 - Jumlah terpilih ditampilkan: "3 karyawan dipilih"
+
+### Phase 7 Detail
+
+#### Landing Page
+- Route: / (root)
+- Saat ini / redirect ke /login. Ubah agar / menampilkan landing page, tombol "Masuk ke Sistem" mengarah ke /login
+- Konten:
+  - Hero section: judul "Kelola SDM Gapura Angkasa", deskripsi singkat tentang sistem, tombol "Masuk ke Sistem"
+  - Fitur section: 3-4 kartu (Manajemen Data SDM, Import/Export Excel, Dashboard Analitik, Multi-Provider Access)
+  - Info perusahaan: logo Gapura Angkasa, deskripsi singkat PT Gapura Angkasa sebagai perusahaan ground handling di Bandara Ngurah Rai Bali
+  - Footer: copyright, link login
+- Design: clean, profesional, menggunakan warna primary #439454, font Figtree
+- Responsive: harus tampil bagus di desktop, tablet, dan mobile
+- Tidak perlu auth untuk akses landing page
+
+#### Subtle Glass UI
+- Terapkan HANYA di elemen tertentu, BUKAN seluruh aplikasi:
+  - Dashboard stat cards: background semi-transparan + backdrop-blur
+  - Card chart di dashboard: subtle glass effect
+  - Sidebar: background dengan sedikit transparansi + blur
+- Teknik CSS: backdrop-filter: blur(10px), background: rgba(255,255,255,0.7), border: 1px solid rgba(255,255,255,0.3)
+- PENTING: readability tetap harus baik, teks harus tetap jelas terbaca
+- PENTING: jika hasilnya kurang bagus, siap untuk revert ke solid background
+- Jangan terapkan glass di: tabel data, form input, modal/dialog, login page
+
+#### Sidebar Role-Based Menu
+- super_admin: semua menu tampil
+- admin: semua menu tampil kecuali Management User
+- staff: semua menu tampil kecuali Tambah Karyawan, Import Excel, Management User
+- Menu yang di-hide benar-benar tidak tampil (bukan disabled/grayed out)
 
 ---
 
