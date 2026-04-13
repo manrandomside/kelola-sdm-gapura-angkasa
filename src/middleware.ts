@@ -4,6 +4,8 @@ import { createServerClient } from "@supabase/ssr";
 const PUBLIC_PATHS = ["/login"];
 
 function isPublicPath(pathname: string): boolean {
+  // Root landing page is always public
+  if (pathname === "/") return true;
   return PUBLIC_PATHS.some(
     (path) => pathname === path || pathname.startsWith(`${path}/`),
   );

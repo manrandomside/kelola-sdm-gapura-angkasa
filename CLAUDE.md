@@ -263,6 +263,7 @@ refactor(dashboard): extract chart into separate components
 ```
 src/
   app/
+    page.tsx                        # Landing page (public)
     (auth)/login/page.tsx
     (dashboard)/
       dashboard/page.tsx
@@ -472,7 +473,7 @@ src/
 ### Phase 7: UI/UX Improvement & Landing Page
 
 #### Landing Page & Glass UI
-- [ ] Landing page: halaman baru di route / (hero, fitur, info perusahaan, footer, tombol Masuk)
+- [x] Landing page: halaman baru di route / (hero, fitur, info perusahaan, footer, tombol Masuk)
 - [ ] Subtle glass UI: terapkan di dashboard (stat cards, card chart) dan sidebar — bukan full glassmorphism, hanya subtle (backdrop-blur, semi-transparan)
 
 #### Dashboard Improvements

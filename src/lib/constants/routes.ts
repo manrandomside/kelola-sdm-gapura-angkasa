@@ -1,6 +1,7 @@
 // Application route paths. Use helpers untuk route yang butuh parameter dinamis.
 
 export const ROUTES = {
+  HOME: "/",
   LOGIN: "/login",
   DASHBOARD: "/dashboard",
   EMPLOYEES: "/employees",
