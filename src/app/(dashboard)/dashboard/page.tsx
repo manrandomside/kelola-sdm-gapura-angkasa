@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   CheckCircle,
   Download,
+  HelpCircle,
   Plus,
   Upload,
   UserCheck,
@@ -27,6 +28,12 @@ import { StatCard } from "@/components/dashboard/stat-card";
 import { StatusOrgChart } from "@/components/dashboard/status-org-chart";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/use-auth";
 import {
   useDashboardActivities,
@@ -213,6 +220,11 @@ export default function DashboardPage() {
               value={stats.nonAktif}
               icon={XCircle}
               color="red"
+              description={
+                stats.total > 0
+                  ? `${((stats.nonAktif / stats.total) * 100).toFixed(1)}% dari total`
+                  : undefined
+              }
             />
           </>
         )}
@@ -236,6 +248,18 @@ export default function DashboardPage() {
                 icon={UserCog}
                 color="amber"
                 compact
+                titleSuffix={
+                  <TooltipProvider delay={200}>
+                    <Tooltip>
+                      <TooltipTrigger className="inline-flex">
+                        <HelpCircle className="size-3.5 cursor-help text-muted-foreground" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Karyawan TAD yang dikontrak melalui paket SDM</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                }
               />
               <StatCard
                 title="Paket Pekerjaan"
@@ -243,6 +267,18 @@ export default function DashboardPage() {
                 icon={UserCog}
                 color="pink"
                 compact
+                titleSuffix={
+                  <TooltipProvider delay={200}>
+                    <Tooltip>
+                      <TooltipTrigger className="inline-flex">
+                        <HelpCircle className="size-3.5 cursor-help text-muted-foreground" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Karyawan TAD yang dikontrak melalui paket pekerjaan</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                }
               />
             </>
           )}

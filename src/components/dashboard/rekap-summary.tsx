@@ -32,7 +32,7 @@ export function RekapSummaryCard() {
           Rekap SDM per Jabatan
         </h3>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Top 10 jabatan terbanyak
+          Menampilkan 10 jabatan terbanyak
         </p>
       </div>
 

@@ -19,7 +19,7 @@ interface MiniStatProps {
   icon: React.ElementType;
 }
 
-function MiniStat({ label, value, colorClass, icon: Icon }: MiniStatProps) {
+function MiniStat({ label, value, colorClass, icon: Icon, subtitle }: MiniStatProps & { subtitle?: string }) {
   return (
     <div className="flex items-center gap-3 rounded-xl border border-border bg-white px-4 py-3">
       <div className={`flex size-10 shrink-0 items-center justify-center rounded-lg ${colorClass}`}>
@@ -30,6 +30,9 @@ function MiniStat({ label, value, colorClass, icon: Icon }: MiniStatProps) {
         <p className="text-lg font-bold text-foreground tabular-nums">
           {value.toLocaleString("id-ID")}
         </p>
+        {subtitle && (
+          <p className="text-xs text-muted-foreground">{subtitle}</p>
+        )}
       </div>
     </div>
   );
@@ -96,6 +99,7 @@ export default function RekapSdmPage() {
               value={summary.totalJabatan}
               colorClass="bg-emerald-500"
               icon={TableProperties}
+              subtitle={`dari ${summary.grandTotal.toLocaleString("id-ID")} karyawan`}
             />
             <MiniStat
               label="Pegawai Tetap"
@@ -139,7 +143,7 @@ export default function RekapSdmPage() {
           disabled={exportMutation.isPending}
         >
           <Download className="size-4" />
-          {exportMutation.isPending ? "Mengexport..." : "Export Excel"}
+          {exportMutation.isPending ? "Mengexport..." : "Export Excel (.xlsx)"}
         </Button>
       </div>
 

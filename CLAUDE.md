@@ -477,9 +477,9 @@ src/
 - [x] Subtle glass UI: terapkan di dashboard (stat cards, card chart) dan sidebar — bukan full glassmorphism, hanya subtle (backdrop-blur, semi-transparan)
 
 #### Dashboard Improvements
-- [ ] Tooltip info di Breakdown TAD — ikon info (?) di card Paket SDM dan Paket Pekerjaan dengan penjelasan: "Karyawan TAD yang dikontrak melalui paket SDM" / "Karyawan TAD yang dikontrak melalui paket pekerjaan"
-- [ ] Persentase di stat card Non Aktif — tampilkan "236 (18.5%)" agar terlihat proporsi terhadap total
-- [ ] Rekap SDM summary di dashboard — tambah subtitle: "Menampilkan 10 jabatan terbanyak"
+- [x] Tooltip info di Breakdown TAD — ikon info (?) di card Paket SDM dan Paket Pekerjaan dengan penjelasan: "Karyawan TAD yang dikontrak melalui paket SDM" / "Karyawan TAD yang dikontrak melalui paket pekerjaan"
+- [x] Persentase di stat card Non Aktif — tampilkan "236 (18.5%)" agar terlihat proporsi terhadap total
+- [x] Rekap SDM summary di dashboard — tambah subtitle: "Menampilkan 10 jabatan terbanyak"
 
 #### Daftar Karyawan Improvements
 - [ ] Tab "Semua" — tambah keterangan "(termasuk non-aktif)" agar tidak ambigu
@@ -496,9 +496,9 @@ src/
 - [ ] Redirect setelah save — setelah berhasil simpan, redirect ke halaman detail karyawan (bukan ke daftar karyawan)
 
 #### Rekap SDM Improvements
-- [ ] Stat card konteks — tambah subtitle "dari X karyawan aktif" di samping atau bawah angka Total Jabatan
-- [ ] Grand Total sticky — baris Grand Total di tabel selalu terlihat saat scroll (sticky bottom)
-- [ ] Export button label — ubah menjadi "Export Excel (.xlsx)" agar jelas formatnya
+- [x] Stat card konteks — tambah subtitle "dari X karyawan aktif" di samping atau bawah angka Total Jabatan
+- [x] Grand Total sticky — baris Grand Total di tabel selalu terlihat saat scroll (sticky bottom)
+- [x] Export button label — ubah menjadi "Export Excel (.xlsx)" agar jelas formatnya
 
 #### Import Improvements
 - [ ] Visual step indicator — tampilkan progress bar/step di atas (Step 1: Upload, Step 2: Preview, Step 3: Import) agar user tahu posisi mereka

@@ -94,10 +94,10 @@ export function RekapTable({
 
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-white">
-      <div className="overflow-x-auto">
+      <div className="relative max-h-[600px] overflow-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-border bg-muted/50">
+            <tr className="sticky top-0 z-10 border-b border-border bg-muted/50">
               <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 No
               </th>
@@ -148,7 +148,7 @@ export function RekapTable({
             ))}
           </tbody>
           <tfoot>
-            <tr className="bg-green-50 font-semibold">
+            <tr className="sticky bottom-0 z-10 border-t-2 border-primary bg-green-50 font-semibold shadow-[0_-2px_8px_rgba(0,0,0,0.06)]">
               <td className="px-4 py-3" />
               <td className="px-4 py-3 text-foreground">GRAND TOTAL</td>
               <td className="px-4 py-3 text-right tabular-nums text-blue-600">

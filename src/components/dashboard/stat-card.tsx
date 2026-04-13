@@ -1,4 +1,5 @@
 import type { LucideIcon } from "lucide-react";
+import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -20,6 +21,7 @@ interface StatCardProps {
   description?: string;
   color?: StatCardColor;
   compact?: boolean;
+  titleSuffix?: ReactNode;
 }
 
 const COLOR_BG: Record<StatCardColor, string> = {
@@ -53,6 +55,7 @@ export function StatCard({
   description,
   color = "primary",
   compact = false,
+  titleSuffix,
 }: StatCardProps) {
   return (
     <div
@@ -71,8 +74,9 @@ export function StatCard({
         <Icon className={cn("size-6", compact && "size-5")} />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-xs font-medium text-muted-foreground">
+        <p className="flex items-center gap-1 truncate text-xs font-medium text-muted-foreground">
           {title}
+          {titleSuffix}
         </p>
         <p
           className={cn(
