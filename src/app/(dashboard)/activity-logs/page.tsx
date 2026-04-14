@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Activity, ExternalLink } from "lucide-react";
+import { Activity, ExternalLink, RotateCcw } from "lucide-react";
 
 import { Pagination } from "@/components/shared/pagination";
 import { SearchInput } from "@/components/shared/search-input";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -23,12 +25,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useActivityLogs } from "@/hooks/use-activity-logs";
-import { ACTIVITY_TYPE_OPTIONS } from "@/lib/constants/enums";
 import { ROUTES } from "@/lib/constants/routes";
 import { formatDateTimeWITA } from "@/lib/utils/date";
 import { cn } from "@/lib/utils";
-
-import type { ActivityType } from "@/lib/constants/enums";
 
 const ACTIVITY_LABELS: Record<string, string> = {
   login: "Login",
@@ -67,6 +66,16 @@ function getActivityBadgeClass(activity: string): string {
   }
   return "bg-gray-50 text-gray-700 border border-gray-200";
 }
+
+const ACTIVITY_GROUP_OPTIONS = [
+  { value: "create", label: "Create" },
+  { value: "update", label: "Update" },
+  { value: "delete", label: "Delete" },
+  { value: "import", label: "Import" },
+  { value: "export", label: "Export" },
+  { value: "login", label: "Login" },
+  { value: "auto_update", label: "Auto Update" },
+] as const;
 
 const ALL_VALUE = "__ALL__";
 const PAGE_LIMIT = 20;
@@ -118,15 +127,21 @@ function EmptyState() {
 export default function ActivityLogsPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
-  const [activity, setActivity] = useState<string | null>(null);
+  const [activity] = useState<string | null>(null);
+  const [activityGroup, setActivityGroup] = useState<string | null>(null);
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   const query = useActivityLogs({
     page,
     limit: PAGE_LIMIT,
     activity,
+    activityGroup,
     search,
     sort: "created_at",
     order: "desc",
+    dateFrom: dateFrom || null,
+    dateTo: dateTo || null,
   });
 
   const activities = query.data?.activities ?? [];
@@ -142,10 +157,24 @@ export default function ActivityLogsPage() {
     setPage(1);
   }
 
-  function handleActivityChange(value: string | null) {
-    setActivity(value);
+  function handleGroupChange(value: string | null) {
+    setActivityGroup(value);
     setPage(1);
   }
+
+  function handleResetFilters() {
+    setSearch("");
+    setActivityGroup(null);
+    setDateFrom("");
+    setDateTo("");
+    setPage(1);
+  }
+
+  const hasActiveFilters =
+    search.length > 0 ||
+    activityGroup !== null ||
+    dateFrom.length > 0 ||
+    dateTo.length > 0;
 
   const isLoading = query.isLoading || query.isFetching;
 
@@ -163,41 +192,78 @@ export default function ActivityLogsPage() {
       </div>
 
       {/* Toolbar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
         <SearchInput
           value={search}
           onChange={handleSearchChange}
           placeholder="Cari deskripsi atau target..."
         />
         <Select
-          value={activity ?? ALL_VALUE}
+          value={activityGroup ?? ALL_VALUE}
           onValueChange={(next) => {
             const asString = next as string;
-            handleActivityChange(asString === ALL_VALUE ? null : asString);
+            handleGroupChange(asString === ALL_VALUE ? null : asString);
           }}
         >
-          <SelectTrigger className="h-10 min-w-[200px]">
+          <SelectTrigger className="h-10 min-w-[180px]">
             <SelectValue>
               {(current: string) =>
                 current === ALL_VALUE ? (
-                  <span className="text-muted-foreground">Semua Aktivitas</span>
+                  <span className="text-muted-foreground">Tipe Aktivitas</span>
                 ) : (
-                  <span>{ACTIVITY_LABELS[current] ?? current}</span>
+                  <span>
+                    {ACTIVITY_GROUP_OPTIONS.find((o) => o.value === current)
+                      ?.label ?? current}
+                  </span>
                 )
               }
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={ALL_VALUE}>
-              <span className="text-muted-foreground">Semua Aktivitas</span>
+              <span className="text-muted-foreground">Semua Tipe</span>
             </SelectItem>
-            {ACTIVITY_TYPE_OPTIONS.map((opt: ActivityType) => (
-              <SelectItem key={opt} value={opt}>
-                {ACTIVITY_LABELS[opt] ?? opt}
+            {ACTIVITY_GROUP_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
+        <div className="flex items-center gap-2">
+          <Input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => {
+              setDateFrom(e.target.value);
+              setPage(1);
+            }}
+            className="h-10 w-[160px]"
+            placeholder="Dari tanggal"
+          />
+          <span className="text-sm text-muted-foreground">-</span>
+          <Input
+            type="date"
+            value={dateTo}
+            onChange={(e) => {
+              setDateTo(e.target.value);
+              setPage(1);
+            }}
+            className="h-10 w-[160px]"
+            placeholder="Sampai tanggal"
+          />
+        </div>
+        {hasActiveFilters && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleResetFilters}
+            className="h-10"
+          >
+            <RotateCcw className="size-4" />
+            Reset Filter
+          </Button>
+        )}
       </div>
 
       {/* Error state */}

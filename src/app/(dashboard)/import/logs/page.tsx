@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import {
   AlertCircle,
   CheckCircle2,
@@ -8,8 +8,11 @@ import {
   ChevronRight,
   History,
   Loader2,
+  RefreshCw,
   XCircle,
 } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
 
 import { Pagination } from "@/components/shared/pagination";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -81,7 +84,7 @@ function LoadingRows() {
     <>
       {Array.from({ length: 8 }).map((_, i) => (
         <TableRow key={`sk-${i}`}>
-          <TableCell colSpan={9} className="py-3">
+          <TableCell colSpan={10} className="py-3">
             <Skeleton className="h-5 w-full" />
           </TableCell>
         </TableRow>
@@ -126,6 +129,9 @@ function ImportLogRow({ log, isExpanded, onToggle }: ImportLogRowProps) {
         <TableCell className="min-w-[200px] text-sm font-medium text-foreground">
           {log.file_name}
         </TableCell>
+        <TableCell className="w-[150px] text-sm text-muted-foreground">
+          {log.user_name ?? "-"}
+        </TableCell>
         <TableCell className="w-[90px] text-right text-sm tabular-nums">
           {log.total_rows.toLocaleString("id-ID")}
         </TableCell>
@@ -152,7 +158,7 @@ function ImportLogRow({ log, isExpanded, onToggle }: ImportLogRowProps) {
       </TableRow>
       {isExpanded && hasErrors && (
         <TableRow className="bg-red-50/30 hover:bg-red-50/30">
-          <TableCell colSpan={9} className="px-6 py-4">
+          <TableCell colSpan={10} className="px-6 py-4">
             <div className="space-y-2">
               <p className="text-xs font-semibold uppercase tracking-wide text-red-700">
                 Detail Error ({errorDetails.length})
@@ -214,25 +220,52 @@ export default function ImportLogsPage() {
   const [page, setPage] = useState(1);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const { data, isLoading, isError, error } = useImportLogs({
-    page,
-    limit: PAGE_LIMIT,
-  });
+  const { data, isLoading, isError, error, refetch, isFetching } =
+    useImportLogs({
+      page,
+      limit: PAGE_LIMIT,
+    });
 
   const logs = data?.logs ?? [];
   const pagination = data?.pagination;
 
+  const hasProcessing = useMemo(
+    () => logs.some((log) => log.status === "processing"),
+    [logs],
+  );
+
   return (
     <div className="space-y-6">
-      <div className="space-y-1">
-        <h1 className="flex items-center gap-2 text-2xl font-bold text-foreground sm:text-3xl">
-          <History className="size-7 text-primary" />
-          Riwayat Import
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Daftar seluruh aktivitas import data karyawan beserta ringkasan
-          hasilnya.
-        </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-foreground sm:text-3xl">
+            <History className="size-7 text-primary" />
+            Riwayat Import
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Daftar seluruh aktivitas import data karyawan beserta ringkasan
+            hasilnya.
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          {hasProcessing && (
+            <span className="flex items-center gap-1.5 text-xs text-amber-600">
+              <Loader2 className="size-3 animate-spin" />
+              Memperbarui otomatis...
+            </span>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refetch()}
+            disabled={isFetching}
+          >
+            <RefreshCw
+              className={cn("size-4", isFetching && "animate-spin")}
+            />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       <div className="overflow-hidden rounded-xl border border-border bg-card">
@@ -246,6 +279,9 @@ export default function ImportLogsPage() {
                 </TableHead>
                 <TableHead className="min-w-[200px] text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   File
+                </TableHead>
+                <TableHead className="w-[150px] text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Diimport Oleh
                 </TableHead>
                 <TableHead className="w-[90px] text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Total
@@ -273,7 +309,7 @@ export default function ImportLogsPage() {
               ) : isError ? (
                 <TableRow>
                   <TableCell
-                    colSpan={9}
+                    colSpan={10}
                     className="py-12 text-center text-sm text-destructive"
                   >
                     {error instanceof Error
@@ -284,7 +320,7 @@ export default function ImportLogsPage() {
               ) : logs.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={9}
+                    colSpan={10}
                     className="py-16 text-center"
                   >
                     <div className="flex flex-col items-center gap-2">

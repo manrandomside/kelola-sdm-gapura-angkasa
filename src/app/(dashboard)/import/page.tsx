@@ -1,17 +1,19 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useDropzone, type FileRejection } from "react-dropzone";
 import {
   AlertCircle,
   ArrowLeft,
+  Check,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
   Download,
   FileSpreadsheet,
   History,
+  Info,
   Loader2,
   RotateCcw,
   Upload,
@@ -119,6 +121,85 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
 
+type ImportStep = 1 | 2 | 3;
+
+const STEPS: { step: ImportStep; label: string; shortLabel: string }[] = [
+  { step: 1, label: "Upload File", shortLabel: "Upload" },
+  { step: 2, label: "Preview & Validasi", shortLabel: "Preview" },
+  { step: 3, label: "Proses Import", shortLabel: "Import" },
+];
+
+function StepIndicator({ currentStep }: { currentStep: ImportStep }) {
+  return (
+    <div className="flex items-center justify-center gap-0">
+      {STEPS.map(({ step, label, shortLabel }, idx) => {
+        const isCompleted = step < currentStep;
+        const isActive = step === currentStep;
+        return (
+          <Fragment key={step}>
+            {idx > 0 && (
+              <div
+                className={cn(
+                  "h-0.5 w-8 sm:w-16",
+                  isCompleted || isActive ? "bg-primary" : "bg-border",
+                )}
+              />
+            )}
+            <div className="flex flex-col items-center gap-1.5">
+              <div
+                className={cn(
+                  "flex size-8 items-center justify-center rounded-full text-sm font-semibold transition-colors",
+                  isCompleted
+                    ? "bg-primary/15 text-primary"
+                    : isActive
+                      ? "bg-primary text-white"
+                      : "bg-muted text-muted-foreground",
+                )}
+              >
+                {isCompleted ? (
+                  <Check className="size-4" />
+                ) : (
+                  step
+                )}
+              </div>
+              <span
+                className={cn(
+                  "text-xs font-medium",
+                  isActive
+                    ? "text-primary"
+                    : isCompleted
+                      ? "text-foreground"
+                      : "text-muted-foreground",
+                )}
+              >
+                <span className="hidden sm:inline">{label}</span>
+                <span className="sm:hidden">{shortLabel}</span>
+              </span>
+            </div>
+          </Fragment>
+        );
+      })}
+    </div>
+  );
+}
+
+function InfoAlert() {
+  return (
+    <div className="flex gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
+      <Info className="mt-0.5 size-5 shrink-0 text-blue-600" />
+      <div>
+        <p className="text-sm font-semibold text-blue-800">
+          Informasi Penting
+        </p>
+        <p className="mt-0.5 text-sm text-blue-700">
+          Setiap karyawan yang berhasil di-import akan otomatis dibuatkan akun
+          login. Username = NIP karyawan, Password = NIP karyawan.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function ImportPage() {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<ImportPreviewResult | null>(null);
@@ -128,6 +209,7 @@ export default function ImportPage() {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [executeResult, setExecuteResult] =
     useState<ImportExecuteResult | null>(null);
+  const errorSectionRef = useRef<HTMLDivElement>(null);
 
   const downloadTemplate = useDownloadTemplate();
   const importPreview = useImportPreview();
@@ -299,6 +381,10 @@ export default function ImportPage() {
     ? preview.summary.validCount + preview.summary.warningCount
     : 0;
 
+  // Determine current step for the step indicator.
+  const currentStep: ImportStep =
+    executeResult || importExecute.isPending ? 3 : preview ? 2 : 1;
+
   // ==========================================================================
   // Step 4 — Hasil Import (setelah execute selesai)
   // ==========================================================================
@@ -312,10 +398,12 @@ export default function ImportPage() {
 
     return (
       <div className="space-y-6">
-        <div className="space-y-1">
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-foreground sm:text-3xl">
-            <FileSpreadsheet className="size-7 text-primary" />
-            Hasil Import Data
+        <StepIndicator currentStep={3} />
+
+        <div className="space-y-1 text-center">
+          <h1 className="flex items-center justify-center gap-2 text-2xl font-bold text-foreground sm:text-3xl">
+            <CheckCircle2 className="size-7 text-primary" />
+            Import Selesai
           </h1>
           <p className="text-sm text-muted-foreground">
             Ringkasan hasil eksekusi import data karyawan.
@@ -396,8 +484,36 @@ export default function ImportPage() {
           </div>
         </div>
 
+        {/* Actionable buttons */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-center">
+          {resultErrors.length > 0 && (
+            <Button
+              variant="outline"
+              onClick={() =>
+                errorSectionRef.current?.scrollIntoView({
+                  behavior: "smooth",
+                })
+              }
+            >
+              <AlertCircle className="size-4" />
+              Lihat Detail Error
+            </Button>
+          )}
+          <Button render={<Link href={ROUTES.EMPLOYEES} />}>
+            <Users className="size-4" />
+            Lihat Data Karyawan
+          </Button>
+          <Button variant="outline" onClick={handleResetAll}>
+            <RotateCcw className="size-4" />
+            Import Lagi
+          </Button>
+        </div>
+
         {resultErrors.length > 0 && (
-          <div className="overflow-hidden rounded-xl border border-border bg-card">
+          <div
+            ref={errorSectionRef}
+            className="overflow-hidden rounded-xl border border-border bg-card"
+          >
             <div className="flex items-center justify-between border-b border-border bg-muted/30 px-4 py-3">
               <h2 className="text-sm font-semibold text-foreground">
                 Detail Error ({resultErrors.length})
@@ -455,26 +571,6 @@ export default function ImportPage() {
             </div>
           </div>
         )}
-
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <Button variant="outline" onClick={handleResetAll}>
-            <RotateCcw className="size-4" />
-            Import Lagi
-          </Button>
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <Button
-              variant="outline"
-              render={<Link href="/import/logs" />}
-            >
-              <History className="size-4" />
-              Riwayat Import
-            </Button>
-            <Button render={<Link href={ROUTES.EMPLOYEES} />}>
-              <Users className="size-4" />
-              Lihat Data Karyawan
-            </Button>
-          </div>
-        </div>
       </div>
     );
   }
@@ -484,7 +580,9 @@ export default function ImportPage() {
   // ==========================================================================
   if (importExecute.isPending) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
+      <div className="space-y-6">
+        <StepIndicator currentStep={3} />
+        <div className="flex min-h-[50vh] items-center justify-center">
         <div className="w-full max-w-md rounded-xl border border-border bg-card p-8 text-center">
           <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-primary/10">
             <Loader2 className="size-8 animate-spin text-primary" />
@@ -503,6 +601,7 @@ export default function ImportPage() {
             Jangan tutup atau refresh halaman ini sampai proses selesai.
           </p>
         </div>
+        </div>
       </div>
     );
   }
@@ -513,6 +612,8 @@ export default function ImportPage() {
   if (preview) {
     return (
       <div className="space-y-6">
+        <StepIndicator currentStep={2} />
+
         <div className="space-y-1">
           <h1 className="flex items-center gap-2 text-2xl font-bold text-foreground sm:text-3xl">
             <FileSpreadsheet className="size-7 text-primary" />
@@ -835,6 +936,8 @@ export default function ImportPage() {
   // ==========================================================================
   return (
     <div className="space-y-6">
+      <StepIndicator currentStep={1} />
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
           <h1 className="flex items-center gap-2 text-2xl font-bold text-foreground sm:text-3xl">
@@ -851,6 +954,8 @@ export default function ImportPage() {
           Riwayat Import
         </Button>
       </div>
+
+      <InfoAlert />
 
       <div className="rounded-xl border border-border bg-card p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

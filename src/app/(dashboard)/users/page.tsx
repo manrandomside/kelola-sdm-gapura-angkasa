@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, ShieldCheck, UserCheck, UserX, Users2 } from "lucide-react";
+import { Info, Plus, ShieldCheck, UserCheck, UserX, Users2 } from "lucide-react";
 
 import { Pagination } from "@/components/shared/pagination";
 import { SearchInput } from "@/components/shared/search-input";
@@ -229,6 +229,14 @@ export default function UsersPage() {
           <Plus className="size-4" />
           Tambah Pengguna
         </Button>
+      </div>
+
+      {/* Info alert */}
+      <div className="flex gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
+        <Info className="mt-0.5 size-5 shrink-0 text-blue-600" />
+        <p className="text-sm text-blue-700">
+          Akun dibuat otomatis saat import data karyawan. Password default = NIP.
+        </p>
       </div>
 
       {/* Statistics cards */}

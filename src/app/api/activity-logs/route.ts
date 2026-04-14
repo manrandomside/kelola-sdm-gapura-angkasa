@@ -1,5 +1,17 @@
 import { NextResponse } from "next/server";
-import { and, asc, count, desc, eq, ilike, or, type SQL } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  gte,
+  ilike,
+  inArray,
+  lte,
+  or,
+  type SQL,
+} from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { activityLog } from "@/lib/db/schema";
@@ -80,9 +92,12 @@ export async function GET(request: Request) {
   const page = parsePositiveInt(searchParams.get("page"), 1);
   const limit = parsePositiveInt(searchParams.get("limit"), 20, 100);
   const activity = searchParams.get("activity")?.trim() || null;
+  const activityGroup = searchParams.get("activity_group")?.trim() || null;
   const userId = searchParams.get("user_id")?.trim() || null;
   const targetType = searchParams.get("target_type")?.trim() || null;
   const search = searchParams.get("search")?.trim() ?? "";
+  const dateFrom = searchParams.get("date_from")?.trim() || null;
+  const dateTo = searchParams.get("date_to")?.trim() || null;
 
   const sortParam = searchParams.get("sort") ?? "created_at";
   const sortKey: SortableColumn =
@@ -91,10 +106,40 @@ export async function GET(request: Request) {
       : "created_at";
   const order = searchParams.get("order") === "asc" ? "asc" : "desc";
 
+  // Mapping from group label to individual activity types.
+  const ACTIVITY_GROUP_MAP: Record<string, string[]> = {
+    create: ["create_employee", "create_user"],
+    update: ["update_employee", "update_user", "update_role"],
+    delete: ["delete_employee", "delete_user"],
+    import: ["import_excel"],
+    export: ["export_excel"],
+    login: ["login", "logout"],
+    auto_update: ["auto_status_update"],
+  };
+
   const conditions: SQL[] = [];
-  if (activity) conditions.push(eq(activityLog.activity, activity));
+  if (activity) {
+    conditions.push(eq(activityLog.activity, activity));
+  } else if (activityGroup && activityGroup in ACTIVITY_GROUP_MAP) {
+    const groupTypes = ACTIVITY_GROUP_MAP[activityGroup];
+    if (groupTypes && groupTypes.length > 0) {
+      conditions.push(inArray(activityLog.activity, groupTypes));
+    }
+  }
   if (userId) conditions.push(eq(activityLog.user_id, userId));
   if (targetType) conditions.push(eq(activityLog.target_type, targetType));
+  if (dateFrom) {
+    const fromDate = new Date(`${dateFrom}T00:00:00.000Z`);
+    if (!Number.isNaN(fromDate.getTime())) {
+      conditions.push(gte(activityLog.created_at, fromDate));
+    }
+  }
+  if (dateTo) {
+    const toDate = new Date(`${dateTo}T23:59:59.999Z`);
+    if (!Number.isNaN(toDate.getTime())) {
+      conditions.push(lte(activityLog.created_at, toDate));
+    }
+  }
   if (search.length > 0) {
     const pattern = `%${search}%`;
     const searchCondition = or(

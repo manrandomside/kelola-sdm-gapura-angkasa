@@ -200,10 +200,19 @@ async function fetchImportLogs(
 }
 
 export function useImportLogs(params: UseImportLogsParams) {
-  return useQuery({
+  const query = useQuery({
     queryKey: ["import-logs", params],
     queryFn: () => fetchImportLogs(params),
     placeholderData: keepPreviousData,
     staleTime: 30 * 1000,
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      if (!data) return false;
+      const hasProcessing = data.logs.some(
+        (log) => log.status === "processing",
+      );
+      return hasProcessing ? 10_000 : false;
+    },
   });
+  return query;
 }

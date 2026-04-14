@@ -35,9 +35,12 @@ export interface UseActivityLogsParams {
   page: number;
   limit: number;
   activity: string | null;
+  activityGroup?: string | null;
   search: string;
   sort: string;
   order: "asc" | "desc";
+  dateFrom?: string | null;
+  dateTo?: string | null;
 }
 
 function buildQueryString(params: UseActivityLogsParams): string {
@@ -45,9 +48,12 @@ function buildQueryString(params: UseActivityLogsParams): string {
   sp.set("page", String(params.page));
   sp.set("limit", String(params.limit));
   if (params.activity) sp.set("activity", params.activity);
+  if (params.activityGroup) sp.set("activity_group", params.activityGroup);
   if (params.search) sp.set("search", params.search);
   sp.set("sort", params.sort);
   sp.set("order", params.order);
+  if (params.dateFrom) sp.set("date_from", params.dateFrom);
+  if (params.dateTo) sp.set("date_to", params.dateTo);
   return sp.toString();
 }
 

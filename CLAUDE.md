@@ -249,25 +249,25 @@ src/
 #### Belum Dikerjakan
 
 **Import Improvements**
-- [ ] Visual step indicator — progress bar/step (Step 1: Upload, Step 2: Preview, Step 3: Import)
-- [ ] Summary lebih actionable — tombol "Lihat Detail Error", "Import Ulang", "Lihat Data Karyawan"
-- [ ] Info auto-create akun — highlight/card: "Setiap karyawan yang di-import otomatis mendapat akun login (NIP = password)"
+- [x] Visual step indicator — progress bar/step (Step 1: Upload, Step 2: Preview, Step 3: Import)
+- [x] Summary lebih actionable — tombol "Lihat Detail Error", "Import Ulang", "Lihat Data Karyawan"
+- [x] Info auto-create akun — highlight/card: "Setiap karyawan yang di-import otomatis mendapat akun login (NIP = password)"
 
 **Riwayat Import Improvements**
-- [ ] Auto-refresh atau button refresh — untuk status "Berjalan" yang stuck
-- [ ] Kolom "Diimport Oleh" — nama user yang melakukan import
+- [x] Auto-refresh atau button refresh — untuk status "Berjalan" yang stuck
+- [x] Kolom "Diimport Oleh" — nama user yang melakukan import
 
 **User Management Improvements**
-- [ ] Info header — teks: "Akun dibuat otomatis saat import data karyawan. Password default = NIP."
-- [ ] Last Login — jika NULL, tampilkan "Belum pernah login"
+- [x] Info header — teks: "Akun dibuat otomatis saat import data karyawan. Password default = NIP."
+- [x] Last Login — jika NULL, tampilkan "Belum pernah login"
 
 **Activity Log Improvements**
-- [ ] Filter by tipe aktivitas — dropdown: Semua, Create, Update, Delete, Import, Export, Login, Auto Update
-- [ ] Filter by tanggal — date range picker
+- [x] Filter by tipe aktivitas — dropdown: Semua, Create, Update, Delete, Import, Export, Login, Auto Update
+- [x] Filter by tanggal — date range picker
 
 **Sidebar Improvements**
-- [ ] Riwayat Import — pindahkan dari sidebar ke dalam halaman Import (tab/link)
-- [ ] Hide menu berdasarkan role — staff: sembunyikan "Tambah Karyawan" dan "Import Excel"
+- [x] Riwayat Import — pindahkan dari sidebar ke dalam halaman Import (tab/link)
+- [x] Hide menu berdasarkan role — staff: sembunyikan "Tambah Karyawan" dan "Import Excel"
 
 ---
 

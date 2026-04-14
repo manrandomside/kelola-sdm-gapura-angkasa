@@ -9,7 +9,7 @@ import {
   ChevronDown,
   Download,
   FileSpreadsheet,
-  History,
+
   LayoutDashboard,
   List,
   LogOut,
@@ -103,13 +103,6 @@ const NAV_ITEMS: ReadonlyArray<NavItem> = [
         label: "Export Excel",
         href: ROUTES.EXPORT,
         icon: Download,
-      },
-      {
-        type: "leaf",
-        label: "Riwayat Import",
-        href: "/import/logs",
-        icon: History,
-        roles: ["super_admin", "admin"],
       },
     ],
   },

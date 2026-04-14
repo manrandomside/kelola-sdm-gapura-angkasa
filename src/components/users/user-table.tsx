@@ -215,7 +215,13 @@ export function UserTable({
                     <StatusBadge status={u.status} />
                   </TableCell>
                   <TableCell className="w-[180px] whitespace-nowrap text-sm text-muted-foreground">
-                    {u.last_login_at ? formatDateTimeWITA(u.last_login_at) : "-"}
+                    {u.last_login_at ? (
+                      formatDateTimeWITA(u.last_login_at)
+                    ) : (
+                      <span className="italic text-muted-foreground">
+                        Belum pernah login
+                      </span>
+                    )}
                   </TableCell>
                   <TableCell className="w-[80px] text-right">
                     <DropdownMenu>
