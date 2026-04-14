@@ -15,6 +15,7 @@ import {
   LogOut,
   Shield,
   TableProperties,
+  TrendingUp,
   Upload,
   UserPlus,
   Users,
@@ -84,6 +85,12 @@ const NAV_ITEMS: ReadonlyArray<NavItem> = [
     label: "Rekap SDM",
     href: ROUTES.REKAP_SDM,
     icon: TableProperties,
+  },
+  {
+    type: "leaf",
+    label: "Analitik",
+    href: ROUTES.ANALYTICS,
+    icon: TrendingUp,
   },
   {
     type: "group",

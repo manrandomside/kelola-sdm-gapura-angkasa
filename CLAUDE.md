@@ -277,11 +277,11 @@ src/
 - [x] Rekap SDM: hapus tombol panah sort (atas/bawah) di header tabel, biarkan default sort A-Z saja
 
 #### Dashboard Perbandingan Periode (Halaman Terpisah)
-- [ ] Halaman baru: /analytics (atau /perbandingan)
-- [ ] Tren karyawan masuk vs keluar per bulan (line chart, 12 bulan terakhir) — masuk = tmt_mulai_kerja, keluar = tmt_berakhir_kerja
-- [ ] Perbandingan bulan ini vs bulan lalu: Total SDM, Aktif, Non Aktif, Kontrak Berakhir — dengan indikator naik/turun dan selisih angka
-- [ ] Turn-over rate per provider: tabel Provider | Total | Masuk | Keluar | Turn-over %
-- [ ] Menu sidebar: tambah menu "Analitik" atau "Perbandingan" dengan ikon TrendingUp atau BarChart2
+- [x] Halaman baru: /analytics (atau /perbandingan)
+- [x] Tren karyawan masuk vs keluar per bulan (line chart, 12 bulan terakhir) — masuk = tmt_mulai_kerja, keluar = tmt_berakhir_kerja
+- [x] Perbandingan bulan ini vs bulan lalu: Total SDM, Aktif, Non Aktif, Kontrak Berakhir — dengan indikator naik/turun dan selisih angka
+- [x] Turn-over rate per provider: tabel Provider | Total | Masuk | Keluar | Turn-over %
+- [x] Menu sidebar: tambah menu "Analitik" atau "Perbandingan" dengan ikon TrendingUp atau BarChart2
 
 #### Report Generator PDF (Halaman Terpisah)
 - [ ] Halaman baru: /reports
