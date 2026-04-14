@@ -269,6 +269,95 @@ src/
 - [x] Riwayat Import — pindahkan dari sidebar ke dalam halaman Import (tab/link)
 - [x] Hide menu berdasarkan role — staff: sembunyikan "Tambah Karyawan" dan "Import Excel"
 
+### Phase 8: Advanced Features & Revisi Tambahan
+
+#### Revisi Tambahan
+- [ ] Non Aktif detail: klik angka Non Aktif (dashboard/management karyawan) memuat breakdown alasan non-aktif (TMT berakhir kerja lewat, Pensiun, Manual) dengan daftar karyawan per grup
+- [ ] Export enhancement: dialog export custom dengan filter (status kerja, status pegawai, provider, unit organisasi, rentang TMT berakhir kerja) + preview jumlah sebelum export — tidak terbatas pagination
+- [ ] Rekap SDM: hapus tombol panah sort (atas/bawah) di header tabel, biarkan default sort A-Z saja
+
+#### Dashboard Perbandingan Periode (Halaman Terpisah)
+- [ ] Halaman baru: /analytics (atau /perbandingan)
+- [ ] Tren karyawan masuk vs keluar per bulan (line chart, 12 bulan terakhir) — masuk = tmt_mulai_kerja, keluar = tmt_berakhir_kerja
+- [ ] Perbandingan bulan ini vs bulan lalu: Total SDM, Aktif, Non Aktif, Kontrak Berakhir — dengan indikator naik/turun dan selisih angka
+- [ ] Turn-over rate per provider: tabel Provider | Total | Masuk | Keluar | Turn-over %
+- [ ] Menu sidebar: tambah menu "Analitik" atau "Perbandingan" dengan ikon TrendingUp atau BarChart2
+
+#### Report Generator PDF (Halaman Terpisah)
+- [ ] Halaman baru: /reports
+- [ ] Laporan Bulanan SDM: ringkasan total, masuk/keluar bulan ini, breakdown per unit dan provider, chart — styling formal dengan logo Gapura Angkasa
+- [ ] Laporan Per Provider: data spesifik provider, total karyawan, kontrak aktif/berakhir, daftar karyawan — untuk dikirim ke provider
+- [ ] Laporan Kontrak: daftar kontrak akan berakhir 30/60/90 hari, grouped per provider dan unit
+- [ ] Format output: PDF profesional dengan logo, header, tabel rapi
+- [ ] Menu sidebar: tambah menu "Laporan" dengan ikon FileText
+
+#### AI Chat Assistant (Halaman Terpisah)
+- [ ] Halaman baru: /assistant
+- [ ] Chat interface: user ketik pertanyaan tentang data SDM, AI jawab berdasarkan data real dari database
+- [ ] Multi-provider AI dengan waterfall: Primary = Google Gemini (free), Fallback = Groq (free). Timeout 10 detik per provider
+- [ ] Pertanyaan dijawab dalam bahasa Indonesia
+- [ ] Data context: kirim statistik/aggregat ke AI (bukan seluruh row), query database sesuai konteks pertanyaan
+- [ ] Provider scope: AI hanya bisa jawab berdasarkan data yang bisa diakses user (sesuai provider)
+- [ ] Role scope: semua role bisa akses (super_admin, admin, staff) tapi data yang dikirim ke AI sesuai hak akses
+- [ ] Riwayat chat per session (tidak persist ke database)
+- [ ] Environment variables baru: GEMINI_API_KEY, GROQ_API_KEY
+- [ ] Menu sidebar: tambah menu "Asisten AI" dengan ikon MessageSquare atau Bot
+
+---
+
+## Phase 8 Detail
+
+### Non Aktif Detail Breakdown
+- Saat klik angka Non Aktif di dashboard stat card atau di management karyawan:
+  - Bisa navigasi ke halaman/modal yang menampilkan breakdown
+  - Grup 1: TMT Berakhir Kerja sudah lewat (kontrak habis)
+  - Grup 2: Pensiun (status_kerja = 'Pensiun')
+  - Grup 3: Non Aktif manual (status_kerja = 'Non Aktif' tapi bukan karena TMT)
+  - Setiap grup expandable untuk lihat daftar karyawan
+  - Total harus cocok dengan angka Non Aktif di stat card
+
+### Export Custom Dialog
+- Dialog muncul saat klik Export di /employees
+- Opsi: Export Semua | Export Terpilih | Export Custom
+- Export Custom filters: Status Kerja, Status Pegawai, Provider, Unit Organisasi, Rentang TMT Berakhir Kerja
+- Preview: "Akan mengexport X karyawan" (hitung dari API sebelum actual export)
+- Tidak terbatas pagination — query langsung ke database dengan filter
+- Format output tetap sama (header hijau, 45 kolom)
+
+### Dashboard Perbandingan Periode
+- Route: /analytics
+- Data dihitung dari field tmt_mulai_kerja dan tmt_berakhir_kerja di tabel employee
+- Masuk = COUNT karyawan yang tmt_mulai_kerja jatuh di bulan tersebut
+- Keluar = COUNT karyawan yang tmt_berakhir_kerja jatuh di bulan tersebut
+- 12 bulan terakhir dari bulan saat ini
+- Perbandingan bulan ini vs bulan lalu: hitung selisih dan tampilkan arrow up/down
+- Turn-over rate = (Keluar / Total) * 100% per provider per bulan
+- Provider scope berlaku: Super Admin provider hanya lihat data mereka
+- API endpoint: GET /api/analytics
+
+### Report Generator PDF
+- Route: /reports
+- Library: jsPDF atau @react-pdf/renderer (pilih yang paling cocok)
+- Semua laporan generate di client-side (browser) atau server-side (API route)
+- Styling: logo Gapura Angkasa di header, font profesional, tabel dengan border, warna hijau primary
+- Laporan Bulanan: pilih bulan/tahun -> generate
+- Laporan Provider: pilih provider -> generate
+- Laporan Kontrak: pilih rentang hari (30/60/90) -> generate
+- Provider scope: Super Admin provider hanya bisa generate laporan provider mereka
+
+### AI Chat Assistant
+- Route: /assistant
+- UI: chat interface mirip ChatGPT/Claude — input di bawah, pesan di atas, scroll
+- Waterfall AI providers:
+  1. Google Gemini (gemini-2.0-flash) — endpoint: https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent
+  2. Groq (llama-3.1-70b-versatile) — endpoint: https://api.groq.com/openai/v1/chat/completions
+  3. Timeout per provider: 10 detik
+  4. Jika semua gagal: "Asisten sedang tidak tersedia, coba lagi nanti"
+- Context building: sebelum kirim ke AI, query database untuk mendapat statistik/data relevan berdasarkan pertanyaan user
+- System prompt: "Kamu adalah asisten SDM PT Gapura Angkasa. Jawab pertanyaan berdasarkan data yang diberikan. Jawab dalam bahasa Indonesia."
+- Provider scope di context: hanya kirim data yang bisa diakses user
+- Env vars: GEMINI_API_KEY, GROQ_API_KEY (tambahkan di .env.local dan Vercel)
+
 ---
 
 ## Catatan Teknis
