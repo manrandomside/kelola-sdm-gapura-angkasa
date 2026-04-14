@@ -16,10 +16,32 @@ export interface ExportFilter {
 
 export type ExportColumnSet = "all" | "basic";
 
+export interface CustomExportFilters {
+  statusKerja?: string;
+  statusPegawai?: string;
+  provider?: string;
+  unitOrganisasi?: string;
+  tmtBerakhirFrom?: string;
+  tmtBerakhirTo?: string;
+}
+
 export interface ExportPayload {
   filter?: ExportFilter;
   columns?: ExportColumnSet;
   selectedIds?: number[];
+  mode?: "all" | "selected" | "custom";
+  customFilters?: CustomExportFilters;
+}
+
+export interface ExportPreviewPayload {
+  mode: "all" | "selected" | "custom";
+  selectedIds?: number[];
+  filters?: CustomExportFilters;
+  currentFilters?: ExportFilter;
+}
+
+interface PreviewResponse {
+  count: number;
 }
 
 // Extract filename dari header Content-Disposition. Fallback ke nama default
@@ -65,6 +87,27 @@ async function postExport(payload: ExportPayload): Promise<void> {
   URL.revokeObjectURL(url);
 }
 
+async function postExportPreview(
+  payload: ExportPreviewPayload,
+): Promise<PreviewResponse> {
+  const res = await fetch("/api/export/preview", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    throw new Error("Gagal menghitung preview");
+  }
+
+  const json = (await res.json()) as ApiResponse<PreviewResponse>;
+  if (!json.success) {
+    throw new Error("Gagal menghitung preview");
+  }
+  return json.data;
+}
+
 export function useExportExcel() {
   return useMutation({
     mutationFn: (payload: ExportPayload) => postExport(payload),
@@ -76,5 +119,11 @@ export function useExportExcel() {
         error instanceof Error ? error.message : "Gagal mengexport data";
       toast.error(message);
     },
+  });
+}
+
+export function useExportPreview() {
+  return useMutation({
+    mutationFn: (payload: ExportPreviewPayload) => postExportPreview(payload),
   });
 }

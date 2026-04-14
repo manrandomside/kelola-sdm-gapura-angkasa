@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { and, asc, eq, ilike, inArray, or, type SQL } from "drizzle-orm";
+import { and, asc, eq, gte, ilike, inArray, lte, or, type SQL } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { activityLog, employee, user } from "@/lib/db/schema";
@@ -29,10 +29,21 @@ interface ExportFilterBody {
   status_kerja?: string | null;
 }
 
+interface CustomFilterBody {
+  statusKerja?: string;
+  statusPegawai?: string;
+  provider?: string;
+  unitOrganisasi?: string;
+  tmtBerakhirFrom?: string;
+  tmtBerakhirTo?: string;
+}
+
 interface ExportRequestBody {
   filter?: ExportFilterBody;
   columns?: ExportColumnSet;
   selectedIds?: number[];
+  mode?: "all" | "selected" | "custom";
+  customFilters?: CustomFilterBody;
 }
 
 function fail(
@@ -74,6 +85,8 @@ export async function POST(request: Request): Promise<NextResponse> {
   const filter = body.filter ?? {};
   const columnSet: ExportColumnSet = body.columns === "basic" ? "basic" : "all";
   const selectedIds = body.selectedIds ?? [];
+  const mode = body.mode ?? (selectedIds.length > 0 ? "selected" : "all");
+  const customFilters = body.customFilters;
 
   // Build WHERE conditions — always include status = 'active' to exclude
   // soft-deleted records.
@@ -84,11 +97,31 @@ export async function POST(request: Request): Promise<NextResponse> {
     conditions.push(eq(employee.provider, exportProviderScope));
   }
 
-  // If specific IDs are selected, filter by those IDs and skip other filters.
-  if (selectedIds.length > 0) {
+  if (mode === "selected" && selectedIds.length > 0) {
+    // Filter by selected IDs only.
     conditions.push(inArray(employee.id, selectedIds));
+  } else if (mode === "custom" && customFilters) {
+    // Apply custom export filters.
+    if (customFilters.statusKerja) {
+      conditions.push(eq(employee.status_kerja, customFilters.statusKerja));
+    }
+    if (customFilters.statusPegawai) {
+      conditions.push(eq(employee.status_pegawai, customFilters.statusPegawai));
+    }
+    if (customFilters.provider && !exportProviderScope) {
+      conditions.push(eq(employee.provider, customFilters.provider));
+    }
+    if (customFilters.unitOrganisasi) {
+      conditions.push(eq(employee.unit_organisasi, customFilters.unitOrganisasi));
+    }
+    if (customFilters.tmtBerakhirFrom) {
+      conditions.push(gte(employee.tmt_berakhir_kerja, customFilters.tmtBerakhirFrom));
+    }
+    if (customFilters.tmtBerakhirTo) {
+      conditions.push(lte(employee.tmt_berakhir_kerja, customFilters.tmtBerakhirTo));
+    }
   } else {
-    // Apply search & filter only when no specific IDs are selected.
+    // mode 'all' — apply search & filters from table.
     const search = filter.search?.trim() ?? "";
     if (search.length > 0) {
       const pattern = `%${search}%`;

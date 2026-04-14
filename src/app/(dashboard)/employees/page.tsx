@@ -3,7 +3,7 @@
 import { AlertTriangle, CheckSquare, Clock, Download, Plus, Users, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { EmployeeTable } from "@/components/employees/employee-table";
 import { ExportDialog } from "@/components/import-export/export-dialog";
@@ -13,7 +13,6 @@ import { SearchInput } from "@/components/shared/search-input";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { useEmployees } from "@/hooks/use-employees";
-import { useExportExcel } from "@/hooks/use-export";
 import { ROUTES } from "@/lib/constants/routes";
 import { cn } from "@/lib/utils";
 import { useFilterStore } from "@/stores/filter-store";
@@ -71,7 +70,6 @@ export default function EmployeesPage() {
   const { user } = useAuth();
   const [contractTab, setContractTab] = useState<ContractTab>("all");
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-  const exportSelectedMutation = useExportExcel();
 
   const {
     search,
@@ -144,14 +142,6 @@ export default function EmployeesPage() {
 
   const [exportOpen, setExportOpen] = useState(false);
 
-  const handleExportSelected = useCallback(() => {
-    if (selectionCount === 0) return;
-    exportSelectedMutation.mutate({
-      selectedIds: Array.from(selectedIds),
-      columns: "all",
-    });
-  }, [selectedIds, selectionCount, exportSelectedMutation]);
-
   return (
     <div className="space-y-6">
       {/* Page header */}
@@ -173,8 +163,7 @@ export default function EmployeesPage() {
             variant="outline"
             size="lg"
             className="gap-1.5"
-            onClick={selectionCount > 0 ? handleExportSelected : () => setExportOpen(true)}
-            disabled={exportSelectedMutation.isPending}
+            onClick={() => setExportOpen(true)}
           >
             <Download className="size-4" />
             {selectionCount > 0
@@ -315,8 +304,7 @@ export default function EmployeesPage() {
           <Button
             size="sm"
             className="gap-1.5"
-            onClick={handleExportSelected}
-            disabled={exportSelectedMutation.isPending}
+            onClick={() => setExportOpen(true)}
           >
             <Download className="size-3.5" />
             Export {selectionCount} Terpilih
@@ -365,11 +353,12 @@ export default function EmployeesPage() {
         onPageChange={setPage}
       />
 
-      {/* Export dialog (opens when no selection — full/filtered export) */}
+      {/* Export dialog */}
       <ExportDialog
         open={exportOpen}
         onOpenChange={setExportOpen}
-        activeFilter={{
+        selectedIds={selectedIds}
+        currentFilters={{
           search,
           status_pegawai,
           status_kontrak,
@@ -377,7 +366,8 @@ export default function EmployeesPage() {
           provider,
           status_kerja,
         }}
-        activeFilterCount={activeCount + (search.length > 0 ? 1 : 0)}
+        userProvider={user?.provider ?? null}
+        onExportSuccess={() => setSelectedIds(new Set())}
       />
     </div>
   );

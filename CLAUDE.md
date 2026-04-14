@@ -273,7 +273,7 @@ src/
 
 #### Revisi Tambahan
 - [x] Non Aktif detail: klik angka Non Aktif (dashboard/management karyawan) memuat breakdown alasan non-aktif (TMT berakhir kerja lewat, Pensiun, Manual) dengan daftar karyawan per grup
-- [ ] Export enhancement: dialog export custom dengan filter (status kerja, status pegawai, provider, unit organisasi, rentang TMT berakhir kerja) + preview jumlah sebelum export — tidak terbatas pagination
+- [x] Export enhancement: dialog export custom dengan filter (status kerja, status pegawai, provider, unit organisasi, rentang TMT berakhir kerja) + preview jumlah sebelum export — tidak terbatas pagination
 - [x] Rekap SDM: hapus tombol panah sort (atas/bawah) di header tabel, biarkan default sort A-Z saja
 
 #### Dashboard Perbandingan Periode (Halaman Terpisah)
