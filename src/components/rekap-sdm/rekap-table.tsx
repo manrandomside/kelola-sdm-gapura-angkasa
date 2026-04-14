@@ -1,7 +1,5 @@
 "use client";
 
-import { ChevronDown, ChevronUp, ChevronsUpDown } from "lucide-react";
-
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -14,14 +12,10 @@ export interface RekapTableProps {
   rows: RekapRow[];
   summary: RekapSummary;
   isLoading?: boolean;
-  onSort?: (column: string, order: "asc" | "desc") => void;
-  currentSort?: { column: string; order: string };
 }
 
-type SortableColumn = "namaJabatan" | "pegawaiTetap" | "pkwt" | "tad" | "total";
-
 interface ColumnDef {
-  key: SortableColumn;
+  key: string;
   label: string;
   align: "left" | "right";
 }
@@ -41,8 +35,6 @@ export function RekapTable({
   rows,
   summary,
   isLoading = false,
-  onSort,
-  currentSort,
 }: RekapTableProps) {
   if (isLoading) {
     return <RekapTableSkeleton />;
@@ -58,28 +50,7 @@ export function RekapTable({
     );
   }
 
-  function handleSort(column: SortableColumn) {
-    if (!onSort) return;
-    const newOrder =
-      currentSort?.column === column && currentSort.order === "desc"
-        ? "asc"
-        : "desc";
-    onSort(column, newOrder);
-  }
-
-  function renderSortIcon(column: SortableColumn) {
-    if (!onSort) return null;
-    if (currentSort?.column !== column) {
-      return <ChevronsUpDown className="ml-1 inline size-3.5 text-muted-foreground/50" />;
-    }
-    return currentSort.order === "asc" ? (
-      <ChevronUp className="ml-1 inline size-3.5 text-primary" />
-    ) : (
-      <ChevronDown className="ml-1 inline size-3.5 text-primary" />
-    );
-  }
-
-  function renderCellValue(column: SortableColumn, value: number) {
+  function renderCellValue(column: string, value: number) {
     if (value === 0) {
       return <span className="text-muted-foreground">0</span>;
     }
@@ -107,12 +78,9 @@ export function RekapTable({
                   className={cn(
                     "whitespace-nowrap px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground",
                     col.align === "right" ? "text-right" : "text-left",
-                    onSort && "cursor-pointer select-none hover:text-foreground",
                   )}
-                  onClick={() => handleSort(col.key)}
                 >
                   {col.label}
-                  {renderSortIcon(col.key)}
                 </th>
               ))}
             </tr>

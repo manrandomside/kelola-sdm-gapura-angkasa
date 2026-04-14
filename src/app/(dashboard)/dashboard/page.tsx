@@ -15,6 +15,7 @@ import {
   XCircle,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 
 import { AgeChart } from "@/components/dashboard/age-chart";
@@ -95,6 +96,7 @@ function ChartSkeleton({ height = 320 }: { height?: number }) {
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const statsQuery = useDashboardStats();
   const chartsQuery = useDashboardCharts();
   const activitiesQuery = useDashboardActivities();
@@ -225,6 +227,7 @@ export default function DashboardPage() {
                   ? `${((stats.nonAktif / stats.total) * 100).toFixed(1)}% dari total`
                   : undefined
               }
+              onClick={() => router.push(ROUTES.EMPLOYEES_NON_AKTIF)}
             />
           </>
         )}

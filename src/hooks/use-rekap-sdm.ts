@@ -30,8 +30,6 @@ export interface RekapData {
 
 export interface RekapParams {
   search?: string;
-  sort?: string;
-  order?: "asc" | "desc";
   limit?: number;
 }
 
@@ -41,8 +39,6 @@ export interface RekapParams {
 async function fetchRekapSdm(params: RekapParams): Promise<RekapData> {
   const searchParams = new URLSearchParams();
   if (params.search) searchParams.set("search", params.search);
-  if (params.sort) searchParams.set("sort", params.sort);
-  if (params.order) searchParams.set("order", params.order);
   if (params.limit) searchParams.set("limit", String(params.limit));
 
   const qs = searchParams.toString();

@@ -55,24 +55,14 @@ function MiniStatSkeleton() {
 // ============================================================================
 export default function RekapSdmPage() {
   const [search, setSearch] = useState("");
-  const [sort, setSort] = useState<{ column: string; order: "asc" | "desc" }>({
-    column: "namaJabatan",
-    order: "asc",
-  });
 
   const debouncedSearch = useDebounce(search, 300);
 
   const { data, isLoading } = useRekapSdm({
     search: debouncedSearch || undefined,
-    sort: sort.column,
-    order: sort.order,
   });
 
   const exportMutation = useExportRekapSdm();
-
-  function handleSort(column: string, order: "asc" | "desc") {
-    setSort({ column, order });
-  }
 
   const summary = data?.summary;
 
@@ -160,8 +150,6 @@ export default function RekapSdmPage() {
           }
         }
         isLoading={isLoading}
-        onSort={handleSort}
-        currentSort={sort}
       />
     </div>
   );

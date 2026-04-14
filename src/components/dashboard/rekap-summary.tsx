@@ -12,7 +12,7 @@ import { ROUTES } from "@/lib/constants/routes";
 // Component
 // ============================================================================
 export function RekapSummaryCard() {
-  const { data, isLoading } = useRekapSdm({ sort: "total", order: "desc", limit: 10 });
+  const { data, isLoading } = useRekapSdm({});
 
   if (isLoading) {
     return <RekapSummarySkeleton />;
@@ -22,7 +22,9 @@ export function RekapSummaryCard() {
     return null;
   }
 
-  const { rows, summary } = data;
+  // Show top 10 by total (sorted descending)
+  const rows = [...data.rows].sort((a, b) => b.total - a.total).slice(0, 10);
+  const { summary } = data;
 
   return (
     <div className="glass-card-subtle rounded-2xl">

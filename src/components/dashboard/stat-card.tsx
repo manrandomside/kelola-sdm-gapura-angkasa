@@ -22,6 +22,7 @@ interface StatCardProps {
   color?: StatCardColor;
   compact?: boolean;
   titleSuffix?: ReactNode;
+  onClick?: () => void;
 }
 
 const COLOR_BG: Record<StatCardColor, string> = {
@@ -56,13 +57,19 @@ export function StatCard({
   color = "primary",
   compact = false,
   titleSuffix,
+  onClick,
 }: StatCardProps) {
   return (
     <div
       className={cn(
         "group glass-card flex items-center gap-4 rounded-2xl p-5 transition-all hover:bg-white/80 hover:shadow-md",
         compact && "p-4",
+        onClick && "cursor-pointer hover:ring-2 hover:ring-primary/20",
       )}
+      onClick={onClick}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } } : undefined}
     >
       <div
         className={cn(

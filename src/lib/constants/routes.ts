@@ -6,6 +6,7 @@ export const ROUTES = {
   DASHBOARD: "/dashboard",
   EMPLOYEES: "/employees",
   EMPLOYEES_CREATE: "/employees/create",
+  EMPLOYEES_NON_AKTIF: "/employees/non-aktif",
   EMPLOYEES_DETAIL: (id: string | number) => `/employees/${id}`,
   EMPLOYEES_EDIT: (id: string | number) => `/employees/${id}/edit`,
   IMPORT: "/import",

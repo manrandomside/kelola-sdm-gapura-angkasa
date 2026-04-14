@@ -2,6 +2,7 @@
 
 import { AlertTriangle, CheckSquare, Clock, Download, Plus, Users, X } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { EmployeeTable } from "@/components/employees/employee-table";
@@ -21,6 +22,7 @@ interface MiniStatProps {
   label: string;
   value: number;
   tone: "default" | "blue" | "violet" | "green" | "red" | "orange";
+  onClick?: () => void;
 }
 
 const TONE_STYLES: Record<MiniStatProps["tone"], string> = {
@@ -41,13 +43,18 @@ const VALUE_TONE: Record<MiniStatProps["tone"], string> = {
   orange: "text-orange-700",
 };
 
-function MiniStatCard({ label, value, tone }: MiniStatProps) {
+function MiniStatCard({ label, value, tone, onClick }: MiniStatProps) {
   return (
     <div
       className={cn(
         "flex-1 min-w-[140px] rounded-xl border border-border px-4 py-3",
         TONE_STYLES[tone],
+        onClick && "cursor-pointer transition-shadow hover:ring-2 hover:ring-primary/20 hover:shadow-md",
       )}
+      onClick={onClick}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } } : undefined}
     >
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
       <p className={cn("mt-1 text-2xl font-bold tabular-nums", VALUE_TONE[tone])}>
@@ -60,6 +67,7 @@ function MiniStatCard({ label, value, tone }: MiniStatProps) {
 type ContractTab = "all" | "expiring" | "expired";
 
 export default function EmployeesPage() {
+  const router = useRouter();
   const { user } = useAuth();
   const [contractTab, setContractTab] = useState<ContractTab>("all");
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -197,7 +205,7 @@ export default function EmployeesPage() {
         <MiniStatCard label="PKWT" value={statistics.pkwt} tone="violet" />
         <MiniStatCard label="TAD" value={statistics.tad} tone="orange" />
         <MiniStatCard label="Aktif" value={statistics.aktif} tone="green" />
-        <MiniStatCard label="Non Aktif" value={statistics.nonAktif} tone="red" />
+        <MiniStatCard label="Non Aktif" value={statistics.nonAktif} tone="red" onClick={() => router.push(ROUTES.EMPLOYEES_NON_AKTIF)} />
       </div>
 
       {/* Contract status tabs */}

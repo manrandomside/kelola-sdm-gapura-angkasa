@@ -62,23 +62,7 @@ export async function GET(request: Request): Promise<NextResponse> {
 
   const { searchParams } = new URL(request.url);
   const search = searchParams.get("search")?.trim() ?? "";
-  const sortParam = searchParams.get("sort") ?? "namaJabatan";
-  const orderParam = searchParams.get("order") ?? "asc";
   const limitParam = searchParams.get("limit");
-
-  // Validate sort column
-  const validSortColumns = ["namaJabatan", "pegawaiTetap", "pkwt", "tad", "total"];
-  const sortColumn = validSortColumns.includes(sortParam) ? sortParam : "namaJabatan";
-  const sortOrder = orderParam === "asc" ? "ASC" : "DESC";
-
-  // Map sort column to SQL expression
-  const sortColumnMap: Record<string, string> = {
-    namaJabatan: "nama_jabatan",
-    pegawaiTetap: "pegawai_tetap",
-    pkwt: "pkwt",
-    tad: "tad",
-    total: "total",
-  };
 
   try {
     // Build search condition
@@ -112,7 +96,7 @@ export async function GET(request: Request): Promise<NextResponse> {
         ${providerCondition}
         ${searchCondition}
       GROUP BY nama_jabatan
-      ORDER BY ${sql.raw(sortColumnMap[sortColumn])} ${sql.raw(sortOrder)}${sortColumn !== "namaJabatan" ? sql`, nama_jabatan ASC` : sql``}
+      ORDER BY nama_jabatan ASC
       ${limitParam ? sql`LIMIT ${Number(limitParam)}` : sql``}
     `);
 
