@@ -189,7 +189,7 @@ src/
     validations/employee.ts, user.ts, import.ts
     utils/date.ts, excel.ts, format.ts, logger.ts, auth.ts, ai-provider.ts
     constants/enums.ts, routes.ts
-  hooks/use-employees.ts, use-dashboard.ts, use-auth.ts, use-debounce.ts, use-assistant.ts
+  hooks/use-employees.ts, use-dashboard.ts, use-auth.ts, use-debounce.ts, use-assistant.ts, use-conversations.ts
   stores/sidebar-store.ts, filter-store.ts
   types/employee.ts, user.ts, api.ts, database.ts
 ```
@@ -299,9 +299,16 @@ src/
 - [x] Data context: kirim statistik/aggregat ke AI (bukan seluruh row), query database sesuai konteks pertanyaan
 - [x] Provider scope: AI hanya bisa jawab berdasarkan data yang bisa diakses user (sesuai provider)
 - [x] Role scope: semua role bisa akses (super_admin, admin, staff) tapi data yang dikirim ke AI sesuai hak akses
-- [x] Riwayat chat per session (tidak persist ke database)
+- [x] Riwayat chat persistent ke database (tabel conversation + chat_message)
 - [x] Environment variables baru: GEMINI_API_KEY, GROQ_API_KEY
 - [x] Menu sidebar: tambah menu "Asisten SDM" dengan ikon Bot
+
+#### Persistent Chat
+- [x] Chat persistent: tabel conversation + chat_message
+- [x] API CRUD conversations (list, create, get, rename, delete)
+- [x] Chat API update — simpan pesan ke database, support conversationId
+- [x] Hook useConversations (list, create, rename, delete)
+- [x] Hook useAssistant updated — track conversationId, loadConversation
 
 ---
 
@@ -398,7 +405,16 @@ src/
 - Perlu set env vars: `GEMINI_API_KEY` dan `GROQ_API_KEY` (di `.env.local` dan Vercel)
 - Data context: statistik aggregat dari database, bukan raw employee data
 - Provider scope berlaku: AI hanya jawab berdasarkan data yang bisa diakses user
-- Chat history per session, tidak persist ke database
+
+### Persistent Chat (2026-04-15)
+- Tabel `conversation` dan `chat_message` ditambahkan ke database
+- Migration endpoint: `POST /api/migrations/add-chat-tables` (super_admin only)
+- API CRUD conversations: list, create, get messages, rename, delete
+- Chat API (`POST /api/assistant/chat`) menyimpan pesan ke database, support `conversationId`
+- Percakapan disimpan per user, max 20 pesan terakhir dikirim ke AI untuk hemat token
+- Ownership check: user hanya bisa akses percakapannya sendiri
+- Hook `useConversations` untuk list/create/rename/delete conversations
+- Hook `useAssistant` updated: track `conversationId`, expose `loadConversation`
 
 ### Known Issues
 - Vercel Hobby timeout 60s: import bulk harus via localhost

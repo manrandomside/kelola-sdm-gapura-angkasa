@@ -45,7 +45,11 @@ async function callGemini(
       },
     );
 
-    if (!response.ok) throw new Error(`Gemini error: ${response.status}`);
+    if (!response.ok) {
+      const errorBody = await response.text().catch(() => "no body");
+      console.error(`[AI] Gemini error ${response.status}:`, errorBody);
+      throw new Error(`Gemini error: ${response.status}`);
+    }
 
     const data = await response.json();
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -57,7 +61,7 @@ async function callGemini(
 }
 
 // ---------------------------------------------------------------------------
-// Provider 2: Groq (llama-3.1-70b-versatile, OpenAI-compatible)
+// Provider 2: Groq (llama-3.3-70b-versatile, OpenAI-compatible)
 // ---------------------------------------------------------------------------
 
 async function callGroq(
@@ -80,7 +84,7 @@ async function callGroq(
           Authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model: "llama-3.1-70b-versatile",
+          model: "llama-3.3-70b-versatile",
           messages: [
             { role: "system", content: systemPrompt },
             ...messages.map((m) => ({ role: m.role, content: m.content })),
@@ -92,7 +96,11 @@ async function callGroq(
       },
     );
 
-    if (!response.ok) throw new Error(`Groq error: ${response.status}`);
+    if (!response.ok) {
+      const errorBody = await response.text().catch(() => "no body");
+      console.error(`[AI] Groq error ${response.status}:`, errorBody);
+      throw new Error(`Groq error: ${response.status}`);
+    }
 
     const data = await response.json();
     const text = data.choices?.[0]?.message?.content;
@@ -116,7 +124,20 @@ export async function askAi(
     const content = await callGemini(messages, systemPrompt);
     return { content, provider: "gemini" };
   } catch (geminiError) {
-    console.error("[AI] Gemini failed:", geminiError);
+    const errMsg =
+      geminiError instanceof Error ? geminiError.message : String(geminiError);
+    console.error("[AI] Gemini failed:", errMsg);
+
+    // Retry once after 2s if rate limited (429)
+    if (errMsg.includes("429")) {
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      try {
+        const content = await callGemini(messages, systemPrompt);
+        return { content, provider: "gemini" };
+      } catch (retryError) {
+        console.error("[AI] Gemini retry failed:", retryError);
+      }
+    }
   }
 
   // Fallback to Groq

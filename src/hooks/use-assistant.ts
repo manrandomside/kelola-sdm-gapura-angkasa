@@ -17,6 +17,7 @@ function generateId(): string {
 export function useAssistant() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const sendMessage = useCallback(
@@ -56,13 +57,18 @@ export function useAssistant() {
         const response = await fetch("/api/assistant/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: history }),
+          body: JSON.stringify({ messages: history, conversationId }),
           signal: abortRef.current.signal,
         });
 
         const data = await response.json();
 
         if (data.success) {
+          // Track conversationId from response
+          if (data.data.conversationId) {
+            setConversationId(data.data.conversationId);
+          }
+
           setMessages((prev) =>
             prev.map((m) =>
               m.id === loadingMsg.id
@@ -118,7 +124,7 @@ export function useAssistant() {
         abortRef.current = null;
       }
     },
-    [isLoading, messages],
+    [isLoading, messages, conversationId],
   );
 
   const retry = useCallback(() => {
@@ -135,8 +141,6 @@ export function useAssistant() {
       return prev;
     });
 
-    // Wait for state update then resend
-    // We need to manually construct the send since messages state hasn't updated yet
     const trimmed = lastUserMsg.content;
     const loadingMsg: ChatMessage = {
       id: generateId(),
@@ -163,12 +167,16 @@ export function useAssistant() {
     fetch("/api/assistant/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: history }),
+      body: JSON.stringify({ messages: history, conversationId }),
       signal: controller.signal,
     })
       .then((res) => res.json())
       .then((data) => {
         if (data.success) {
+          if (data.data.conversationId) {
+            setConversationId(data.data.conversationId);
+          }
+
           setMessages((prev) =>
             prev.map((m) =>
               m.id === loadingMsg.id
@@ -219,19 +227,30 @@ export function useAssistant() {
         setIsLoading(false);
         abortRef.current = null;
       });
-  }, [messages]);
+  }, [messages, conversationId]);
 
   const clearChat = useCallback(() => {
     abortRef.current?.abort();
     setMessages([]);
+    setConversationId(null);
     setIsLoading(false);
   }, []);
+
+  const loadConversation = useCallback(
+    (id: string, loadedMessages: ChatMessage[]) => {
+      setConversationId(id);
+      setMessages(loadedMessages);
+    },
+    [],
+  );
 
   return {
     messages,
     isLoading,
+    conversationId,
     sendMessage,
     clearChat,
     retry,
+    loadConversation,
   };
 }

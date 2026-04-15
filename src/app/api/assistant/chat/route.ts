@@ -1,8 +1,17 @@
 import { NextResponse } from "next/server";
-import { and, count, desc, eq, isNotNull, sql, type SQL } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  isNotNull,
+  sql,
+  type SQL,
+} from "drizzle-orm";
 
 import { db } from "@/lib/db";
-import { employee } from "@/lib/db/schema";
+import { chatMessage, conversation, employee } from "@/lib/db/schema";
 import { createClient } from "@/lib/supabase/server";
 import { getProviderFilter, getSessionUser } from "@/lib/utils/auth";
 import { askAi, type AiMessage } from "@/lib/utils/ai-provider";
@@ -12,11 +21,13 @@ import type { ApiResponse } from "@/types/api";
 
 interface ChatRequest {
   messages: { role: "user" | "assistant"; content: string }[];
+  conversationId?: string | null;
 }
 
 interface ChatResponse {
   content: string;
   provider: string;
+  conversationId: string;
 }
 
 function fail(
@@ -131,14 +142,80 @@ export async function POST(
     return fail(400, "INVALID_BODY", "Request body tidak valid");
   }
 
-  if (!body.messages || !Array.isArray(body.messages) || body.messages.length === 0) {
+  if (
+    !body.messages ||
+    !Array.isArray(body.messages) ||
+    body.messages.length === 0
+  ) {
     return fail(400, "INVALID_MESSAGES", "Messages tidak boleh kosong");
   }
 
   const providerScope = getProviderFilter(sessionUser);
 
   try {
-    // Build context from database
+    // -----------------------------------------------------------------------
+    // 1. Resolve or create conversation
+    // -----------------------------------------------------------------------
+    let conversationId = body.conversationId ?? null;
+
+    if (conversationId) {
+      // Verify ownership
+      const conv = await db.query.conversation.findFirst({
+        where: and(
+          eq(conversation.id, conversationId),
+          eq(conversation.user_id, sessionUser.id),
+        ),
+      });
+      if (!conv) {
+        return fail(404, "NOT_FOUND", "Percakapan tidak ditemukan");
+      }
+    } else {
+      // Create new conversation — title from first user message
+      const firstUserMsg = body.messages.find((m) => m.role === "user");
+      const titleText = firstUserMsg?.content ?? "Percakapan Baru";
+      const title =
+        titleText.length > 30 ? titleText.slice(0, 30) + "..." : titleText;
+
+      const rows = await db
+        .insert(conversation)
+        .values({
+          user_id: sessionUser.id,
+          title,
+        })
+        .returning();
+      conversationId = rows[0].id;
+    }
+
+    // -----------------------------------------------------------------------
+    // 2. Save user message to database
+    // -----------------------------------------------------------------------
+    const lastUserMsg = body.messages[body.messages.length - 1];
+    if (lastUserMsg && lastUserMsg.role === "user") {
+      await db.insert(chatMessage).values({
+        conversation_id: conversationId,
+        role: "user",
+        content: lastUserMsg.content,
+      });
+    }
+
+    // -----------------------------------------------------------------------
+    // 3. Build AI messages from database (last 20 messages for token economy)
+    // -----------------------------------------------------------------------
+    const dbMessages = await db
+      .select({
+        role: chatMessage.role,
+        content: chatMessage.content,
+      })
+      .from(chatMessage)
+      .where(eq(chatMessage.conversation_id, conversationId))
+      .orderBy(asc(chatMessage.created_at));
+
+    // Take last 20 messages for context
+    const recentMessages = dbMessages.slice(-20);
+
+    // -----------------------------------------------------------------------
+    // 4. Build context from employee database
+    // -----------------------------------------------------------------------
     const conditions: SQL[] = [eq(employee.status, "active")];
     if (providerScope) {
       conditions.push(eq(employee.provider, providerScope));
@@ -229,19 +306,38 @@ export async function POST(
       sessionUser.role,
     );
 
-    // Convert messages to AI format (only user/assistant, no system)
-    const aiMessages: AiMessage[] = body.messages.map((m) => ({
-      role: m.role,
+    // -----------------------------------------------------------------------
+    // 5. Call AI with messages from database
+    // -----------------------------------------------------------------------
+    const aiMessages: AiMessage[] = recentMessages.map((m) => ({
+      role: m.role as "user" | "assistant",
       content: m.content,
     }));
 
     const result = await askAi(aiMessages, systemPrompt);
+
+    // -----------------------------------------------------------------------
+    // 6. Save assistant response to database
+    // -----------------------------------------------------------------------
+    await db.insert(chatMessage).values({
+      conversation_id: conversationId,
+      role: "assistant",
+      content: result.content,
+      provider: result.provider,
+    });
+
+    // Update conversation.updated_at
+    await db
+      .update(conversation)
+      .set({ updated_at: new Date() })
+      .where(eq(conversation.id, conversationId));
 
     return NextResponse.json<ApiResponse<ChatResponse>>({
       success: true,
       data: {
         content: result.content,
         provider: result.provider,
+        conversationId,
       },
     });
   } catch (err) {

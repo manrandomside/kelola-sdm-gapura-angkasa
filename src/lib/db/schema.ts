@@ -226,6 +226,33 @@ export const importLog = pgTable("import_log", {
 });
 
 // ============================================================================
+// conversation — AI assistant chat conversations per user
+// ============================================================================
+export const conversation = pgTable("conversation", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  user_id: uuid("user_id")
+    .references(() => user.id, { onDelete: "cascade" })
+    .notNull(),
+  title: varchar("title", { length: 255 }).default("Percakapan Baru").notNull(),
+  created_at: createdAt,
+  updated_at: updatedAt,
+});
+
+// ============================================================================
+// chat_message — Messages within a conversation
+// ============================================================================
+export const chatMessage = pgTable("chat_message", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  conversation_id: uuid("conversation_id")
+    .references(() => conversation.id, { onDelete: "cascade" })
+    .notNull(),
+  role: varchar("role", { length: 20 }).notNull(),
+  content: text("content").notNull(),
+  provider: varchar("provider", { length: 20 }),
+  created_at: createdAt,
+});
+
+// ============================================================================
 // app_setting — Key/value settings untuk konfigurasi aplikasi
 // ============================================================================
 export const appSetting = pgTable("app_setting", {
