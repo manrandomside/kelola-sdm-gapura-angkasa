@@ -314,6 +314,10 @@ src/
 - [x] Rename dan delete percakapan
 - [x] Group percakapan by waktu (Hari Ini, Kemarin, dll)
 - [x] Mobile drawer untuk sidebar
+- [x] Fix export dialog scroll (max-h-[85vh] overflow-y-auto)
+- [x] Hapus halaman /export lama — export hanya via dialog di /employees
+- [x] Sidebar: hapus menu Export Excel & Laporan terpisah, tambah Laporan PDF di submenu Import & Export
+- [x] Dashboard: jam real-time (detik) + rename stat card "Total Karyawan" ke "Total"
 
 ---
 

@@ -8,7 +8,6 @@ import {
   Activity,
   Bot,
   ChevronDown,
-  Download,
   FileSpreadsheet,
   FileText,
 
@@ -96,12 +95,6 @@ const NAV_ITEMS: ReadonlyArray<NavItem> = [
   },
   {
     type: "leaf",
-    label: "Laporan",
-    href: ROUTES.REPORTS,
-    icon: FileText,
-  },
-  {
-    type: "leaf",
     label: "Asisten SDM",
     href: ROUTES.ASSISTANT,
     icon: Bot,
@@ -121,9 +114,9 @@ const NAV_ITEMS: ReadonlyArray<NavItem> = [
       },
       {
         type: "leaf",
-        label: "Export Excel",
-        href: ROUTES.EXPORT,
-        icon: Download,
+        label: "Laporan PDF",
+        href: ROUTES.REPORTS,
+        icon: FileText,
       },
     ],
   },

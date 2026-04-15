@@ -15,7 +15,6 @@ const ROUTE_LABELS: Record<string, string> = {
   [ROUTES.EMPLOYEES_CREATE]: "Tambah Karyawan",
   [ROUTES.IMPORT]: "Import Excel",
   "/import/logs": "Riwayat Import",
-  [ROUTES.EXPORT]: "Export Excel",
   [ROUTES.USERS]: "Management User",
   [ROUTES.ACTIVITY_LOGS]: "Activity Log",
 };

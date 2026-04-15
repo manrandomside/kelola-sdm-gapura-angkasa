@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { AgeChart } from "@/components/dashboard/age-chart";
 import { BarChartCard } from "@/components/dashboard/bar-chart-card";
@@ -103,12 +103,15 @@ export default function DashboardPage() {
 
   const canEdit = user?.role === "super_admin" || user?.role === "admin";
 
-  // Format tanggal hari ini dalam WITA. Pakai Intl di locale Indonesia via
-  // date-fns untuk nama hari & bulan.
+  // Real-time clock in WITA
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   const todayLabel = useMemo(() => {
-    // Convert current time to WITA via Intl formatter, lalu parse kembali.
-    // Cara sederhana: ambil komponen hari/bulan/tahun dengan formatter WITA.
-    const now = new Date();
     const parts = new Intl.DateTimeFormat("en-CA", {
       timeZone: APP_TIMEZONE,
       year: "numeric",
@@ -119,8 +122,21 @@ export default function DashboardPage() {
     const m = Number(parts.find((p) => p.type === "month")?.value ?? 1) - 1;
     const d = Number(parts.find((p) => p.type === "day")?.value ?? 1);
     const wita = new Date(y, m, d);
-    return format(wita, "EEEE, d MMMM yyyy", { locale: idLocale });
-  }, []);
+    const dateStr = format(wita, "EEEE, d MMMM yyyy", { locale: idLocale });
+
+    const timeParts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: APP_TIMEZONE,
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    }).formatToParts(now);
+    const hh = timeParts.find((p) => p.type === "hour")?.value ?? "00";
+    const mm = timeParts.find((p) => p.type === "minute")?.value ?? "00";
+    const ss = timeParts.find((p) => p.type === "second")?.value ?? "00";
+
+    return `${dateStr} ${hh}:${mm}:${ss}`;
+  }, [now]);
 
   const stats = statsQuery.data;
   const charts = chartsQuery.data;
@@ -171,7 +187,7 @@ export default function DashboardPage() {
             variant="outline"
             size="sm"
             className="gap-1.5"
-            render={<Link href={ROUTES.EXPORT} />}
+            render={<Link href={ROUTES.EMPLOYEES} />}
           >
             <Download className="size-4" />
             Export Excel
@@ -188,7 +204,7 @@ export default function DashboardPage() {
         ) : (
           <>
             <StatCard
-              title="Total Karyawan"
+              title="Total"
               value={stats.total}
               icon={Users}
               color="primary"

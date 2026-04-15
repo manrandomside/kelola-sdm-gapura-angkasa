@@ -10,7 +10,6 @@ export const ROUTES = {
   EMPLOYEES_DETAIL: (id: string | number) => `/employees/${id}`,
   EMPLOYEES_EDIT: (id: string | number) => `/employees/${id}/edit`,
   IMPORT: "/import",
-  EXPORT: "/export",
   USERS: "/users",
   REKAP_SDM: "/rekap-sdm",
   ANALYTICS: "/analytics",
