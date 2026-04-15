@@ -175,6 +175,7 @@ src/
       units/route.ts, units/[id]/sub-units/route.ts
     layout.tsx, globals.css
   components/
+    assistant/       # ChatSidebar, ChatArea
     layout/          # AppShell, Sidebar, TopBar
     employees/       # EmployeeTable, EmployeeForm, EmployeeDetail, ContractBadge
     dashboard/       # StatCard, Charts, RekapSummary
@@ -309,6 +310,10 @@ src/
 - [x] Chat API update — simpan pesan ke database, support conversationId
 - [x] Hook useConversations (list, create, rename, delete)
 - [x] Hook useAssistant updated — track conversationId, loadConversation
+- [x] UI Chat sidebar riwayat percakapan (desktop + mobile responsive)
+- [x] Rename dan delete percakapan
+- [x] Group percakapan by waktu (Hari Ini, Kemarin, dll)
+- [x] Mobile drawer untuk sidebar
 
 ---
 
