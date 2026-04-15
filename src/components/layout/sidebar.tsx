@@ -9,6 +9,7 @@ import {
   ChevronDown,
   Download,
   FileSpreadsheet,
+  FileText,
 
   LayoutDashboard,
   List,
@@ -91,6 +92,12 @@ const NAV_ITEMS: ReadonlyArray<NavItem> = [
     label: "Analitik",
     href: ROUTES.ANALYTICS,
     icon: TrendingUp,
+  },
+  {
+    type: "leaf",
+    label: "Laporan",
+    href: ROUTES.REPORTS,
+    icon: FileText,
   },
   {
     type: "group",

@@ -284,12 +284,12 @@ src/
 - [x] Menu sidebar: tambah menu "Analitik" atau "Perbandingan" dengan ikon TrendingUp atau BarChart2
 
 #### Report Generator PDF (Halaman Terpisah)
-- [ ] Halaman baru: /reports
-- [ ] Laporan Bulanan SDM: ringkasan total, masuk/keluar bulan ini, breakdown per unit dan provider, chart — styling formal dengan logo Gapura Angkasa
-- [ ] Laporan Per Provider: data spesifik provider, total karyawan, kontrak aktif/berakhir, daftar karyawan — untuk dikirim ke provider
-- [ ] Laporan Kontrak: daftar kontrak akan berakhir 30/60/90 hari, grouped per provider dan unit
-- [ ] Format output: PDF profesional dengan logo, header, tabel rapi
-- [ ] Menu sidebar: tambah menu "Laporan" dengan ikon FileText
+- [x] Halaman baru: /reports
+- [x] Laporan Bulanan SDM: ringkasan total, masuk/keluar bulan ini, breakdown per unit dan provider, chart — styling formal dengan logo Gapura Angkasa
+- [x] Laporan Per Provider: data spesifik provider, total karyawan, kontrak aktif/berakhir, daftar karyawan — untuk dikirim ke provider
+- [x] Laporan Kontrak: daftar kontrak akan berakhir 30/60/90 hari, grouped per provider dan unit
+- [x] Format output: PDF profesional dengan logo, header, tabel rapi
+- [x] Menu sidebar: tambah menu "Laporan" dengan ikon FileText
 
 #### AI Chat Assistant (Halaman Terpisah)
 - [ ] Halaman baru: /assistant
