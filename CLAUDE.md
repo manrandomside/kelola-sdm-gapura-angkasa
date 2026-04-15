@@ -187,9 +187,9 @@ src/
     supabase/client.ts, server.ts, middleware.ts
     db/schema.ts, migrations/
     validations/employee.ts, user.ts, import.ts
-    utils/date.ts, excel.ts, format.ts, logger.ts, auth.ts
+    utils/date.ts, excel.ts, format.ts, logger.ts, auth.ts, ai-provider.ts
     constants/enums.ts, routes.ts
-  hooks/use-employees.ts, use-dashboard.ts, use-auth.ts, use-debounce.ts
+  hooks/use-employees.ts, use-dashboard.ts, use-auth.ts, use-debounce.ts, use-assistant.ts
   stores/sidebar-store.ts, filter-store.ts
   types/employee.ts, user.ts, api.ts, database.ts
 ```
@@ -292,16 +292,16 @@ src/
 - [x] Menu sidebar: tambah menu "Laporan" dengan ikon FileText
 
 #### AI Chat Assistant (Halaman Terpisah)
-- [ ] Halaman baru: /assistant
-- [ ] Chat interface: user ketik pertanyaan tentang data SDM, AI jawab berdasarkan data real dari database
-- [ ] Multi-provider AI dengan waterfall: Primary = Google Gemini (free), Fallback = Groq (free). Timeout 10 detik per provider
-- [ ] Pertanyaan dijawab dalam bahasa Indonesia
-- [ ] Data context: kirim statistik/aggregat ke AI (bukan seluruh row), query database sesuai konteks pertanyaan
-- [ ] Provider scope: AI hanya bisa jawab berdasarkan data yang bisa diakses user (sesuai provider)
-- [ ] Role scope: semua role bisa akses (super_admin, admin, staff) tapi data yang dikirim ke AI sesuai hak akses
-- [ ] Riwayat chat per session (tidak persist ke database)
-- [ ] Environment variables baru: GEMINI_API_KEY, GROQ_API_KEY
-- [ ] Menu sidebar: tambah menu "Asisten AI" dengan ikon MessageSquare atau Bot
+- [x] Halaman baru: /assistant
+- [x] Chat interface: user ketik pertanyaan tentang data SDM, AI jawab berdasarkan data real dari database
+- [x] Multi-provider AI dengan waterfall: Primary = Google Gemini (free), Fallback = Groq (free). Timeout 10 detik per provider
+- [x] Pertanyaan dijawab dalam bahasa Indonesia
+- [x] Data context: kirim statistik/aggregat ke AI (bukan seluruh row), query database sesuai konteks pertanyaan
+- [x] Provider scope: AI hanya bisa jawab berdasarkan data yang bisa diakses user (sesuai provider)
+- [x] Role scope: semua role bisa akses (super_admin, admin, staff) tapi data yang dikirim ke AI sesuai hak akses
+- [x] Riwayat chat per session (tidak persist ke database)
+- [x] Environment variables baru: GEMINI_API_KEY, GROQ_API_KEY
+- [x] Menu sidebar: tambah menu "Asisten SDM" dengan ikon Bot
 
 ---
 
@@ -392,6 +392,13 @@ src/
 - Workflows: `.github/workflows/cron-contract-status.yml`, `.github/workflows/supabase-keepalive.yml`
 - GitHub Secrets needed: `APP_URL`, `CRON_SECRET`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`
 - Vercel env needed: `CRON_SECRET`
+
+### AI Chat Assistant (2026-04-15)
+- AI provider waterfall: Gemini (primary) -> Groq (fallback), timeout 10s per provider
+- Perlu set env vars: `GEMINI_API_KEY` dan `GROQ_API_KEY` (di `.env.local` dan Vercel)
+- Data context: statistik aggregat dari database, bukan raw employee data
+- Provider scope berlaku: AI hanya jawab berdasarkan data yang bisa diakses user
+- Chat history per session, tidak persist ke database
 
 ### Known Issues
 - Vercel Hobby timeout 60s: import bulk harus via localhost

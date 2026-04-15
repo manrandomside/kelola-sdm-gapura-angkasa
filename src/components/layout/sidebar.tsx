@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
+  Bot,
   ChevronDown,
   Download,
   FileSpreadsheet,
@@ -98,6 +99,12 @@ const NAV_ITEMS: ReadonlyArray<NavItem> = [
     label: "Laporan",
     href: ROUTES.REPORTS,
     icon: FileText,
+  },
+  {
+    type: "leaf",
+    label: "Asisten SDM",
+    href: ROUTES.ASSISTANT,
+    icon: Bot,
   },
   {
     type: "group",
