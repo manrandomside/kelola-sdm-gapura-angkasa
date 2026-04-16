@@ -189,7 +189,6 @@ export async function generateMonthlyReport(
 
   finalizePdf(doc);
 
-  const monthStr = String(data.periode.month).padStart(2, "0");
   downloadPdf(
     doc,
     `Laporan_Bulanan_SDM_${data.periode.label.replace(/\s/g, "_")}.pdf`,

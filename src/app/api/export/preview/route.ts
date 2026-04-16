@@ -147,7 +147,8 @@ export async function POST(request: Request): Promise<NextResponse> {
       success: true,
       data: { count: result?.value ?? 0 },
     });
-  } catch {
+  } catch (err) {
+    console.error("Failed to count export preview:", err);
     return fail(500, "INTERNAL_ERROR", "Gagal menghitung data");
   }
 }

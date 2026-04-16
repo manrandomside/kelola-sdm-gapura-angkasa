@@ -126,6 +126,9 @@ export async function POST(): Promise<
       .returning();
 
     const row = rows[0];
+    if (!row) {
+      return fail(500, "INTERNAL_ERROR", "Gagal membuat percakapan baru");
+    }
 
     return NextResponse.json<ApiResponse<ConversationCreateResponse>>({
       success: true,

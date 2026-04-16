@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { and, asc, count, desc, eq, gte, ilike, isNotNull, lt, lte, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, isNotNull, or, sql, type SQL } from "drizzle-orm";
 
 import { db } from "@/lib/db";
-import { activityLog, employee, user } from "@/lib/db/schema";
+import { activityLog, employee } from "@/lib/db/schema";
 import { createClient } from "@/lib/supabase/server";
 import { getProviderFilter, getSessionUser } from "@/lib/utils/auth";
 import { logger } from "@/lib/utils/logger";

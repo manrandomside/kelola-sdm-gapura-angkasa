@@ -32,19 +32,26 @@ export async function GET(): Promise<
     );
   }
 
-  const rows = await db
-    .select({
-      id: organization.id,
-      kode_organisasi: organization.kode_organisasi,
-      nama_organisasi: organization.nama_organisasi,
-      unit_organisasi: organization.unit_organisasi,
-    })
-    .from(organization)
-    .where(eq(organization.is_active, true))
-    .orderBy(asc(organization.sort_order), asc(organization.nama_organisasi));
+  try {
+    const rows = await db
+      .select({
+        id: organization.id,
+        kode_organisasi: organization.kode_organisasi,
+        nama_organisasi: organization.nama_organisasi,
+        unit_organisasi: organization.unit_organisasi,
+      })
+      .from(organization)
+      .where(eq(organization.is_active, true))
+      .orderBy(asc(organization.sort_order), asc(organization.nama_organisasi));
 
-  return NextResponse.json<ApiResponse<OrganizationListResponse>>({
-    success: true,
-    data: { organizations: rows },
-  });
+    return NextResponse.json<ApiResponse<OrganizationListResponse>>({
+      success: true,
+      data: { organizations: rows },
+    });
+  } catch {
+    return NextResponse.json<ApiResponse<never>>(
+      { success: false, error: { code: "INTERNAL_ERROR", message: "Gagal memuat data organisasi" } },
+      { status: 500 },
+    );
+  }
 }

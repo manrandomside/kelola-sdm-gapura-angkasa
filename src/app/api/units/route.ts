@@ -40,19 +40,26 @@ export async function GET(
     conditions.push(eq(unit.unit_organisasi, unitOrganisasi));
   }
 
-  const rows = await db
-    .select({
-      id: unit.id,
-      unit_organisasi: unit.unit_organisasi,
-      kode: unit.kode,
-      nama: unit.nama,
-    })
-    .from(unit)
-    .where(and(...conditions))
-    .orderBy(asc(unit.sort_order), asc(unit.nama));
+  try {
+    const rows = await db
+      .select({
+        id: unit.id,
+        unit_organisasi: unit.unit_organisasi,
+        kode: unit.kode,
+        nama: unit.nama,
+      })
+      .from(unit)
+      .where(and(...conditions))
+      .orderBy(asc(unit.sort_order), asc(unit.nama));
 
-  return NextResponse.json<ApiResponse<UnitListResponse>>({
-    success: true,
-    data: { units: rows },
-  });
+    return NextResponse.json<ApiResponse<UnitListResponse>>({
+      success: true,
+      data: { units: rows },
+    });
+  } catch {
+    return NextResponse.json<ApiResponse<never>>(
+      { success: false, error: { code: "INTERNAL_ERROR", message: "Gagal memuat data unit" } },
+      { status: 500 },
+    );
+  }
 }

@@ -42,19 +42,26 @@ export async function GET(
     );
   }
 
-  const rows = await db
-    .select({
-      id: subUnit.id,
-      unit_id: subUnit.unit_id,
-      nama: subUnit.nama,
-      kode: subUnit.kode,
-    })
-    .from(subUnit)
-    .where(and(eq(subUnit.unit_id, unitId), eq(subUnit.is_active, true)))
-    .orderBy(asc(subUnit.sort_order), asc(subUnit.nama));
+  try {
+    const rows = await db
+      .select({
+        id: subUnit.id,
+        unit_id: subUnit.unit_id,
+        nama: subUnit.nama,
+        kode: subUnit.kode,
+      })
+      .from(subUnit)
+      .where(and(eq(subUnit.unit_id, unitId), eq(subUnit.is_active, true)))
+      .orderBy(asc(subUnit.sort_order), asc(subUnit.nama));
 
-  return NextResponse.json<ApiResponse<SubUnitListResponse>>({
-    success: true,
-    data: { sub_units: rows },
-  });
+    return NextResponse.json<ApiResponse<SubUnitListResponse>>({
+      success: true,
+      data: { sub_units: rows },
+    });
+  } catch {
+    return NextResponse.json<ApiResponse<never>>(
+      { success: false, error: { code: "INTERNAL_ERROR", message: "Gagal memuat data sub unit" } },
+      { status: 500 },
+    );
+  }
 }

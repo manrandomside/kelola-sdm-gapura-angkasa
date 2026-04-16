@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { and, count, eq, gte, lt, isNotNull, sql, type SQL } from "drizzle-orm";
+import { and, count, eq, isNotNull, sql, type SQL } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { employee } from "@/lib/db/schema";

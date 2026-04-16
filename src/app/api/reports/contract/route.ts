@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { and, asc, count, eq, gte, lte, isNotNull, sql, type SQL } from "drizzle-orm";
+import { and, asc, eq, gte, lte, isNotNull, sql, type SQL } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { employee } from "@/lib/db/schema";
@@ -47,8 +47,8 @@ export async function GET(request: Request): Promise<NextResponse> {
   const base: SQL[] = [
     eq(employee.status, "active"),
     isNotNull(employee.tmt_berakhir_kerja),
-    gte(employee.tmt_berakhir_kerja, today!),
-    lte(employee.tmt_berakhir_kerja, futureDate!),
+    gte(employee.tmt_berakhir_kerja, today),
+    lte(employee.tmt_berakhir_kerja, futureDate),
   ];
   if (providerScope) base.push(eq(employee.provider, providerScope));
 
