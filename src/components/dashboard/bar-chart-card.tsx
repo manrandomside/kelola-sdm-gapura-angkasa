@@ -103,12 +103,14 @@ export function BarChartCard({
                 <Tooltip
                   content={<CustomTooltip />}
                   cursor={{ fill: "#F3F4F6" }}
+                  isAnimationActive={false}
                 />
                 <Bar
                   dataKey="value"
                   fill={colors ? undefined : color}
                   radius={[0, 6, 6, 0]}
                   maxBarSize={24}
+                  isAnimationActive={false}
                 >
                   {colors && data.map((_entry, index) => (
                     <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
@@ -137,12 +139,14 @@ export function BarChartCard({
                 <Tooltip
                   content={<CustomTooltip />}
                   cursor={{ fill: "#F3F4F6" }}
+                  isAnimationActive={false}
                 />
                 <Bar
                   dataKey="value"
                   fill={colors ? undefined : color}
                   radius={[6, 6, 0, 0]}
                   maxBarSize={40}
+                  isAnimationActive={false}
                 >
                   {colors && data.map((_entry, index) => (
                     <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />

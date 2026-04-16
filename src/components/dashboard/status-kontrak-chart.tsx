@@ -116,12 +116,13 @@ export function StatusKontrakChart({ data }: StatusKontrakChartProps) {
                   axisLine={false}
                   allowDecimals={false}
                 />
-                <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(0,0,0,0.04)" }} />
+                <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(0,0,0,0.04)" }} isAnimationActive={false} />
                 <Bar
                   dataKey="value"
                   radius={[6, 6, 0, 0]}
                   maxBarSize={56}
                   label={<CustomLabel />}
+                  isAnimationActive={false}
                 >
                   {data.map((entry) => (
                     <Cell key={entry.name} fill={resolveColor(entry.name)} />

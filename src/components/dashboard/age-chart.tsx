@@ -94,8 +94,9 @@ export function AgeChart({ data }: AgeChartProps) {
               <Tooltip
                 content={<CustomTooltip />}
                 cursor={{ fill: "#F3F4F6" }}
+                isAnimationActive={false}
               />
-              <Bar dataKey="count" radius={[6, 6, 0, 0]} maxBarSize={48} label={{ position: "top", fontSize: 11, fill: "#6B7280" }}>
+              <Bar dataKey="count" radius={[6, 6, 0, 0]} maxBarSize={48} label={{ position: "top", fontSize: 11, fill: "#6B7280" }} isAnimationActive={false}>
                 {data.map((entry) => (
                   <Cell
                     key={entry.range}

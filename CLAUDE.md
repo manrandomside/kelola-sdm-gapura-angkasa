@@ -179,6 +179,7 @@ src/
     layout/          # AppShell, Sidebar, TopBar
     employees/       # EmployeeTable, EmployeeForm, EmployeeDetail, ContractBadge
     dashboard/       # StatCard, Charts, RekapSummary
+    pwa/             # ServiceWorkerRegister, InstallButton
     import-export/   # ImportWizard, ExportDialog
     rekap-sdm/       # RekapTable
     users/           # UserTable, UserForm
@@ -321,6 +322,8 @@ src/
 - [x] Login page: split layout desktop (50/50) + tablet (35/65) + mobile (form only), panel kiri branding hijau, panel kanan form, link kembali ke beranda
 - [x] Landing page: update 6 fitur (termasuk AI Assistant dan Laporan PDF), 5 stats bar
 - [x] Sidebar: rename "Import & Export" menjadi "Import & Laporan"
+- [x] Fix chart kedip-kedip: isAnimationActive=false, useMemo data, clock terpisah, React.memo chart components
+- [x] PWA support: manifest.json, service worker, install button di landing page
 
 ---
 
@@ -427,6 +430,20 @@ src/
 - Ownership check: user hanya bisa akses percakapannya sendiri
 - Hook `useConversations` untuk list/create/rename/delete conversations
 - Hook `useAssistant` updated: track `conversationId`, expose `loadConversation`
+
+### PWA Support (2026-04-16)
+- Manifest: `public/manifest.json`, icons: `public/icon-192.png`, `public/icon-512.png`
+- Service worker: `public/sw.js` (network-first strategy)
+- Components: `src/components/pwa/service-worker-register.tsx`, `src/components/pwa/install-button.tsx`
+- Install button ditampilkan di landing page (section sebelum footer)
+- ServiceWorkerRegister di-mount di root layout
+
+### Chart Performance Fix (2026-04-16)
+- Semua chart Recharts: `isAnimationActive={false}` pada Bar, Pie, Line, Area, Tooltip
+- Dashboard clock diekstrak ke komponen `ClockDisplay` terpisah agar tidak trigger re-render chart
+- Chart components di-wrap dengan `React.memo` di dashboard page
+- Color arrays di-memoize dengan `useMemo`
+- Analytics page charts juga di-fix
 
 ### Known Issues
 - Vercel Hobby timeout 60s: import bulk harus via localhost

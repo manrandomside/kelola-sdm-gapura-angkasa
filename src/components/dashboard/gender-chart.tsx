@@ -72,6 +72,7 @@ export function GenderChart({ data }: GenderChartProps) {
                   paddingAngle={2}
                   stroke="#ffffff"
                   strokeWidth={2}
+                  isAnimationActive={false}
                 >
                   {data.map((entry) => (
                     <Cell
@@ -80,7 +81,7 @@ export function GenderChart({ data }: GenderChartProps) {
                     />
                   ))}
                 </Pie>
-                <Tooltip content={<CustomTooltip />} />
+                <Tooltip content={<CustomTooltip />} isAnimationActive={false} />
               </PieChart>
             </ResponsiveContainer>
           </div>

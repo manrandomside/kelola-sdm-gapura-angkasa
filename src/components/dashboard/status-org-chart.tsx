@@ -98,7 +98,7 @@ export function StatusOrgChart({ data }: StatusOrgChartProps) {
                 tick={{ fontSize: 11, fill: "#6B7280" }}
                 tickFormatter={(v: number) => v.toLocaleString("id-ID")}
               />
-              <Tooltip content={<CustomTooltip />} cursor={{ fill: "#F3F4F6" }} />
+              <Tooltip content={<CustomTooltip />} cursor={{ fill: "#F3F4F6" }} isAnimationActive={false} />
               <Legend
                 wrapperStyle={{ fontSize: 12 }}
                 iconType="circle"
@@ -111,6 +111,7 @@ export function StatusOrgChart({ data }: StatusOrgChartProps) {
                 fill="#3B82F6"
                 radius={[0, 0, 0, 0]}
                 maxBarSize={48}
+                isAnimationActive={false}
               />
               <Bar
                 dataKey="pkwt"
@@ -119,6 +120,7 @@ export function StatusOrgChart({ data }: StatusOrgChartProps) {
                 fill="#8B5CF6"
                 radius={[0, 0, 0, 0]}
                 maxBarSize={48}
+                isAnimationActive={false}
               />
               <Bar
                 dataKey="tad"
@@ -127,6 +129,7 @@ export function StatusOrgChart({ data }: StatusOrgChartProps) {
                 fill="#F97316"
                 radius={[4, 4, 0, 0]}
                 maxBarSize={48}
+                isAnimationActive={false}
               />
             </BarChart>
           </ResponsiveContainer>

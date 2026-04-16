@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { motion, useInView } from "framer-motion";
 
+import { InstallButton } from "@/components/pwa/install-button";
 import { ROUTES } from "@/lib/constants/routes";
 
 // ---------------------------------------------------------------------------
@@ -352,6 +353,35 @@ function CompanySection() {
   );
 }
 
+function InstallSection() {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-80px" });
+
+  return (
+    <section ref={ref} className="bg-background py-16 sm:py-20">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.5 }}
+          className="text-center"
+        >
+          <h3 className="text-xl font-semibold text-foreground sm:text-2xl">
+            Install di Perangkat Anda
+          </h3>
+          <p className="mx-auto mt-2 max-w-lg text-muted-foreground">
+            Install aplikasi ini ke home screen untuk akses lebih cepat dan
+            pengalaman seperti aplikasi native.
+          </p>
+          <div className="mt-6">
+            <InstallButton />
+          </div>
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
 function Footer() {
   return (
     <footer className="bg-[#111827] text-white">
@@ -401,6 +431,7 @@ export default function LandingPage() {
       <StatsSection />
       <FeaturesSection />
       <CompanySection />
+      <InstallSection />
       <Footer />
     </div>
   );

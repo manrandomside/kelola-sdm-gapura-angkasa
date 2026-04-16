@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 
 import { AgeChart } from "@/components/dashboard/age-chart";
 import { BarChartCard } from "@/components/dashboard/bar-chart-card";
@@ -84,26 +84,10 @@ const PROVIDER_COLORS: Record<string, string> = {
 
 const COLORFUL_FALLBACK = "#9CA3AF";
 
-function ChartSkeleton({ height = 320 }: { height?: number }) {
-  return (
-    <div className="glass-card-subtle rounded-2xl p-5">
-      <Skeleton className="h-5 w-48" />
-      <Skeleton className="mt-2 h-3 w-32" />
-      <Skeleton className="mt-4 w-full" style={{ height }} />
-    </div>
-  );
-}
-
-export default function DashboardPage() {
-  const { user } = useAuth();
-  const router = useRouter();
-  const statsQuery = useDashboardStats();
-  const chartsQuery = useDashboardCharts();
-  const activitiesQuery = useDashboardActivities();
-
-  const canEdit = user?.role === "super_admin" || user?.role === "admin";
-
-  // Real-time clock in WITA
+// ---------------------------------------------------------------------------
+// Isolated clock component — updates every second without re-rendering charts
+// ---------------------------------------------------------------------------
+function ClockDisplay() {
   const [now, setNow] = useState(new Date());
 
   useEffect(() => {
@@ -111,7 +95,7 @@ export default function DashboardPage() {
     return () => clearInterval(interval);
   }, []);
 
-  const todayLabel = useMemo(() => {
+  const label = useMemo(() => {
     const parts = new Intl.DateTimeFormat("en-CA", {
       timeZone: APP_TIMEZONE,
       year: "numeric",
@@ -138,9 +122,50 @@ export default function DashboardPage() {
     return `${dateStr} ${hh}:${mm}:${ss}`;
   }, [now]);
 
+  return <>{label} WITA</>;
+}
+
+// Memoized chart wrappers to prevent re-renders from parent state changes
+const MemoizedBarChartCard = memo(BarChartCard);
+const MemoizedStatusKontrakChart = memo(StatusKontrakChart);
+const MemoizedGenderChart = memo(GenderChart);
+const MemoizedAgeChart = memo(AgeChart);
+const MemoizedPositionGroupChart = memo(PositionGroupChart);
+const MemoizedStatusOrgChart = memo(StatusOrgChart);
+const MemoizedRekapSummaryCard = memo(RekapSummaryCard);
+
+function ChartSkeleton({ height = 320 }: { height?: number }) {
+  return (
+    <div className="glass-card-subtle rounded-2xl p-5">
+      <Skeleton className="h-5 w-48" />
+      <Skeleton className="mt-2 h-3 w-32" />
+      <Skeleton className="mt-4 w-full" style={{ height }} />
+    </div>
+  );
+}
+
+export default function DashboardPage() {
+  const { user } = useAuth();
+  const router = useRouter();
+  const statsQuery = useDashboardStats();
+  const chartsQuery = useDashboardCharts();
+  const activitiesQuery = useDashboardActivities();
+
+  const canEdit = user?.role === "super_admin" || user?.role === "admin";
+
   const stats = statsQuery.data;
   const charts = chartsQuery.data;
   const activities = activitiesQuery.data?.activities ?? [];
+
+  // Memoize color arrays to prevent chart re-renders
+  const unitOrgColors = useMemo(
+    () => charts?.unitOrganisasi.map((d) => UNIT_ORG_COLORS[d.name] ?? COLORFUL_FALLBACK) ?? [],
+    [charts?.unitOrganisasi],
+  );
+  const providerColors = useMemo(
+    () => charts?.provider.map((d) => PROVIDER_COLORS[d.name] ?? COLORFUL_FALLBACK) ?? [],
+    [charts?.provider],
+  );
 
   const statsLoading = statsQuery.isLoading;
   const chartsLoading = chartsQuery.isLoading;
@@ -155,7 +180,7 @@ export default function DashboardPage() {
             Selamat datang, {user?.full_name ?? "Pengguna"}!
           </h1>
           <p className="text-sm text-muted-foreground">
-            {todayLabel} WITA
+            <ClockDisplay />
           </p>
         </div>
 
@@ -329,8 +354,8 @@ export default function DashboardPage() {
           </>
         ) : (
           <>
-            <StatusKontrakChart data={charts.statusKontrak} />
-            <GenderChart data={charts.jenisKelamin} />
+            <MemoizedStatusKontrakChart data={charts.statusKontrak} />
+            <MemoizedGenderChart data={charts.jenisKelamin} />
           </>
         )}
       </div>
@@ -344,16 +369,14 @@ export default function DashboardPage() {
           </>
         ) : (
           <>
-            <BarChartCard
+            <MemoizedBarChartCard
               title="Karyawan per Unit Organisasi"
               data={charts.unitOrganisasi}
-              colors={charts.unitOrganisasi.map(
-                (d) => UNIT_ORG_COLORS[d.name] ?? COLORFUL_FALLBACK,
-              )}
+              colors={unitOrgColors}
               layout="vertical"
               height={320}
             />
-            <AgeChart data={charts.komposisiUsia} />
+            <MemoizedAgeChart data={charts.komposisiUsia} />
           </>
         )}
       </div>
@@ -367,16 +390,14 @@ export default function DashboardPage() {
           </>
         ) : (
           <>
-            <BarChartCard
+            <MemoizedBarChartCard
               title="Karyawan per Provider"
               data={charts.provider}
-              colors={charts.provider.map(
-                (d) => PROVIDER_COLORS[d.name] ?? COLORFUL_FALLBACK,
-              )}
+              colors={providerColors}
               layout="vertical"
               height={360}
             />
-            <PositionGroupChart data={charts.kelompokJabatan} />
+            <MemoizedPositionGroupChart data={charts.kelompokJabatan} />
           </>
         )}
       </div>
@@ -385,11 +406,11 @@ export default function DashboardPage() {
       {chartsLoading || !charts ? (
         <ChartSkeleton height={320} />
       ) : (
-        <StatusOrgChart data={charts.statusPerOrganisasi} />
+        <MemoizedStatusOrgChart data={charts.statusPerOrganisasi} />
       )}
 
       {/* Rekap SDM per Jabatan (Top 10) */}
-      <RekapSummaryCard />
+      <MemoizedRekapSummaryCard />
 
       {/* Recent Activities */}
       <RecentActivitiesCard

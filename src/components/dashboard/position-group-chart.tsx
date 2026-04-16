@@ -101,12 +101,14 @@ export function PositionGroupChart({ data }: PositionGroupChartProps) {
               <Tooltip
                 content={<CustomTooltip />}
                 cursor={{ fill: "#F3F4F6" }}
+                isAnimationActive={false}
               />
               <Bar
                 dataKey="count"
                 radius={[0, 6, 6, 0]}
                 maxBarSize={24}
                 label={{ position: "right", fontSize: 11, fill: "#6B7280" }}
+                isAnimationActive={false}
               >
                 {data.map((entry, index) => (
                   <Cell

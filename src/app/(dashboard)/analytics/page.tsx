@@ -265,7 +265,7 @@ export default function AnalyticsPage() {
                     tickLine={false}
                     allowDecimals={false}
                   />
-                  <Tooltip content={<ChartTooltip />} />
+                  <Tooltip content={<ChartTooltip />} isAnimationActive={false} />
                   <Legend
                     iconType="circle"
                     wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
@@ -276,6 +276,7 @@ export default function AnalyticsPage() {
                     fill="url(#fillMasuk)"
                     stroke="none"
                     name="Masuk"
+                    isAnimationActive={false}
                   />
                   <Area
                     type="monotone"
@@ -284,6 +285,7 @@ export default function AnalyticsPage() {
                     stroke="none"
                     name="Keluar (area)"
                     legendType="none"
+                    isAnimationActive={false}
                   />
                   <Line
                     type="monotone"
@@ -294,6 +296,7 @@ export default function AnalyticsPage() {
                     activeDot={{ r: 5 }}
                     name="Masuk"
                     legendType="none"
+                    isAnimationActive={false}
                   />
                   <Line
                     type="monotone"
@@ -303,6 +306,7 @@ export default function AnalyticsPage() {
                     dot={{ r: 3, fill: "#EF4444" }}
                     activeDot={{ r: 5 }}
                     name="Keluar"
+                    isAnimationActive={false}
                   />
                 </ComposedChart>
               </ResponsiveContainer>
