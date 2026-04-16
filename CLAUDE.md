@@ -318,6 +318,9 @@ src/
 - [x] Hapus halaman /export lama — export hanya via dialog di /employees
 - [x] Sidebar: hapus menu Export Excel & Laporan terpisah, tambah Laporan PDF di submenu Import & Export
 - [x] Dashboard: jam real-time (detik) + rename stat card "Total Karyawan" ke "Total"
+- [x] Login page: split layout desktop (50/50) + tablet (35/65) + mobile (form only), panel kiri branding hijau, panel kanan form, link kembali ke beranda
+- [x] Landing page: update 6 fitur (termasuk AI Assistant dan Laporan PDF), 5 stats bar
+- [x] Sidebar: rename "Import & Export" menjadi "Import & Laporan"
 
 ---
 

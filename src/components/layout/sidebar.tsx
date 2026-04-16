@@ -102,7 +102,7 @@ const NAV_ITEMS: ReadonlyArray<NavItem> = [
   {
     type: "group",
     id: "import-export",
-    label: "Import & Export",
+    label: "Import & Laporan",
     icon: FileSpreadsheet,
     children: [
       {

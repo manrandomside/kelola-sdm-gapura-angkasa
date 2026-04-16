@@ -6,8 +6,10 @@ import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
   BarChart3,
+  Bot,
   ChevronDown,
   FileSpreadsheet,
+  FileText,
   MapPin,
   Shield,
   Users,
@@ -26,25 +28,37 @@ const FEATURES = [
     icon: Users,
     title: "Manajemen Data SDM",
     description:
-      "Kelola data pribadi, kepegawaian, pendidikan, dan administrasi seluruh karyawan dalam satu platform terpusat.",
+      "Kelola data pribadi, kepegawaian, pendidikan, dan administrasi seluruh karyawan. Monitoring kontrak otomatis dengan color coding.",
   },
   {
     icon: FileSpreadsheet,
     title: "Import & Export Excel",
     description:
-      "Import data massal dari file Excel/CSV dan export laporan dengan format profesional. Mendukung 1000+ data sekaligus.",
+      "Import data massal dari Excel/CSV dan export dengan filter custom. Template profesional dengan 45 kolom data.",
   },
   {
     icon: BarChart3,
-    title: "Dashboard Analitik",
+    title: "Dashboard & Analitik",
     description:
-      "Pantau statistik SDM secara real-time. Distribusi karyawan per unit, provider, jabatan, dan status kontrak.",
+      "7 chart interaktif, statistik real-time, tren bulanan, perbandingan periode, dan turn-over rate per provider.",
+  },
+  {
+    icon: Bot,
+    title: "Asisten SDM AI",
+    description:
+      "Tanyakan apa saja tentang data SDM. Dijawab oleh AI berdasarkan data real-time. Riwayat percakapan tersimpan.",
+  },
+  {
+    icon: FileText,
+    title: "Laporan PDF",
+    description:
+      "Generate laporan bulanan, per provider, dan kontrak dalam format PDF profesional dengan logo perusahaan.",
   },
   {
     icon: Shield,
     title: "Multi-Provider Access",
     description:
-      "Akses terkontrol per provider. Setiap provider hanya melihat data karyawan mereka sendiri.",
+      "Akses terkontrol per provider. 10 provider dengan Super Admin masing-masing. Data terisolasi dan aman.",
   },
 ] as const;
 
@@ -53,6 +67,7 @@ const STATS = [
   { value: 10, suffix: "", label: "Provider" },
   { value: 9, suffix: "", label: "Unit Organisasi" },
   { value: 7, suffix: "", label: "Chart Analitik" },
+  { value: 1, suffix: "", label: "AI-Powered" },
 ] as const;
 
 // ---------------------------------------------------------------------------
@@ -203,7 +218,7 @@ function StatsSection() {
 
   return (
     <section ref={ref} className="bg-primary">
-      <div className="mx-auto grid max-w-6xl grid-cols-2 gap-6 px-4 py-10 sm:px-6 md:grid-cols-4 md:gap-8 lg:px-8 lg:py-12">
+      <div className="mx-auto grid max-w-6xl grid-cols-2 gap-6 px-4 py-10 sm:px-6 md:grid-cols-3 md:gap-8 lg:grid-cols-5 lg:px-8 lg:py-12">
         {STATS.map((stat) => (
           <StatItem key={stat.label} stat={stat} inView={inView} />
         ))}
@@ -259,7 +274,7 @@ function FeaturesSection() {
 
         <div
           ref={ref}
-          className="mt-12 grid gap-6 sm:grid-cols-2 lg:gap-8"
+          className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3 lg:gap-8"
         >
           {FEATURES.map((feature, i) => (
             <motion.div
