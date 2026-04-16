@@ -432,11 +432,14 @@ src/
 - Hook `useAssistant` updated: track `conversationId`, expose `loadConversation`
 
 ### PWA Support (2026-04-16)
-- Manifest: `public/manifest.json`, icons: `public/icon-192.png`, `public/icon-512.png`
-- Service worker: `public/sw.js` (network-first strategy)
+- Manifest: `public/manifest.json` — start_url="/", scope="/", purpose="any" (bukan "any maskable")
+- Icons: `public/icon-192.png`, `public/icon-512.png` (root level, bukan subfolder)
+- Service worker: `public/sw.js` — network-first, skipWaiting + clients.claim, skip /api/ requests
 - Components: `src/components/pwa/service-worker-register.tsx`, `src/components/pwa/install-button.tsx`
+- Install button: platform detection (ios/android/desktop) + manual guide fallback untuk Safari/Firefox
 - Install button ditampilkan di landing page (section sebelum footer)
 - ServiceWorkerRegister di-mount di root layout
+- PWA hanya installable dari HTTPS (production Vercel), bukan localhost
 
 ### Chart Performance Fix (2026-04-16)
 - Semua chart Recharts: `isAnimationActive={false}` pada Bar, Pie, Line, Area, Tooltip

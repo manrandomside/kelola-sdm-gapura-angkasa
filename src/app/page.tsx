@@ -358,22 +358,24 @@ function InstallSection() {
   const inView = useInView(ref, { once: true, margin: "-80px" });
 
   return (
-    <section ref={ref} className="bg-background py-16 sm:py-20">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+    <section
+      ref={ref}
+      className="bg-gradient-to-b from-white to-[#e8f5e9]/30 py-16 px-6 sm:py-20"
+    >
+      <div className="mx-auto max-w-2xl text-center">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.5 }}
-          className="text-center"
         >
-          <h3 className="text-xl font-semibold text-foreground sm:text-2xl">
+          <h3 className="text-2xl font-bold text-foreground sm:text-3xl">
             Install di Perangkat Anda
           </h3>
-          <p className="mx-auto mt-2 max-w-lg text-muted-foreground">
-            Install aplikasi ini ke home screen untuk akses lebih cepat dan
-            pengalaman seperti aplikasi native.
+          <p className="mx-auto mt-3 max-w-lg text-muted-foreground">
+            Install aplikasi ini ke home screen untuk akses lebih cepat,
+            pengalaman native, dan dapat dibuka tanpa browser.
           </p>
-          <div className="mt-6">
+          <div className="mt-8">
             <InstallButton />
           </div>
         </motion.div>
