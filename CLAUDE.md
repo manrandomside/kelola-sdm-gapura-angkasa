@@ -229,10 +229,10 @@ src/
 - [x] Tab "Sudah Berakhir" info breakdown
 - [x] Template Import/Export Excel redesign (header hijau, sub-header, urutan kolom)
 - [x] Export pilih SDM (checkbox di tabel)
-- [ ] Polish: Responsive tablet layout
-- [ ] Polish: Responsive mobile layout
-- [ ] Polish: Loading states (skeleton/spinner)
-- [ ] Polish: Empty states with illustration
+- [x] Polish: Responsive tablet layout
+- [x] Polish: Responsive mobile layout
+- [x] Polish: Loading states (skeleton/spinner)
+- [x] Polish: Empty states with illustration
 - [ ] Polish: Toast notifications improvement
 - [ ] Polish: Error boundaries
 - [ ] Polish: Change password page
@@ -447,6 +447,19 @@ src/
 - Chart components di-wrap dengan `React.memo` di dashboard page
 - Color arrays di-memoize dengan `useMemo`
 - Analytics page charts juga di-fix
+
+### Responsive Layout & Polish (2026-04-16)
+- Mobile-first responsive: Tailwind sm:/md:/lg: prefixes, mobile breakpoint <768px
+- Sidebar: desktop fixed (lg+), mobile/tablet drawer via shadcn Sheet (already existed)
+- Dashboard: stat cards `grid-cols-2 md:grid-cols-3 xl:grid-cols-6`, charts `lg:grid-cols-2`
+- Daftar Karyawan: stat cards grid responsive, collapsible filter on mobile (Filter button toggle), contract tabs horizontal scroll, employee table overflow-x-auto, action buttons icon-only on mobile
+- Detail Karyawan: mobile sticky bottom action bar (Kembali/Edit/Hapus), desktop action buttons in header, bottom padding for mobile bar
+- Activity Log: collapsible filter on mobile (Filter button toggle), table overflow-x-auto
+- Filter Bar: grid layout on mobile (2 cols), flex-wrap on desktop
+- Rekap SDM & Analytics: already responsive grids, tables with overflow-x-auto
+- Empty States: reusable `EmptyState` component (`src/components/shared/empty-state.tsx`) used across: employees (no data + no results), activity logs, import logs, rekap SDM, analytics
+- Loading Skeletons: inline skeletons per page (dashboard stat/chart, employee table, detail, edit, rekap, analytics, activity logs, import logs)
+- Reusable `TableSkeleton` component at `src/components/shared/table-skeleton.tsx`
 
 ### Known Issues
 - Vercel Hobby timeout 60s: import bulk harus via localhost

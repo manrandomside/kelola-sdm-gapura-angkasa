@@ -611,7 +611,7 @@ export function EmployeeForm({
         value={activeTab}
         onValueChange={(value) => setActiveTab(value as TabKey)}
       >
-        <TabsList className="h-auto w-full justify-start gap-1 bg-muted/60 p-1">
+        <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto bg-muted/60 p-1">
           {(Object.keys(TAB_LABELS) as TabKey[]).map((key) => {
             const hasError = tabsWithErrors.has(key);
             const hasFilled = tabsWithData.has(key);

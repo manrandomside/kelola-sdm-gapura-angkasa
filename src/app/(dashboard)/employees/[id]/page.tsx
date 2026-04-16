@@ -53,10 +53,48 @@ export default function EmployeeDetailPage({ params }: EmployeeDetailPageProps) 
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <Skeleton className="h-6 w-64" />
-        <Skeleton className="h-24 w-full" />
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-96 w-full" />
+        {/* Breadcrumb skeleton */}
+        <div className="flex items-center gap-1.5">
+          <Skeleton className="h-4 w-20" />
+          <Skeleton className="size-4" />
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="size-4" />
+          <Skeleton className="h-4 w-40" />
+        </div>
+        {/* Header card skeleton */}
+        <div className="rounded-xl border border-border bg-card p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="space-y-3 flex-1">
+              <Skeleton className="h-8 w-64" />
+              <div className="flex gap-4">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-4 w-48" />
+              </div>
+              <div className="flex gap-2">
+                <Skeleton className="h-6 w-16 rounded-full" />
+                <Skeleton className="h-6 w-24 rounded-full" />
+                <Skeleton className="h-6 w-28 rounded-full" />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Skeleton className="h-10 w-24 rounded-lg" />
+              <Skeleton className="h-10 w-20 rounded-lg" />
+            </div>
+          </div>
+        </div>
+        {/* Tabs skeleton */}
+        <Skeleton className="h-11 w-full rounded-lg" />
+        {/* Content skeleton */}
+        <div className="rounded-xl border border-border bg-card p-6">
+          <div className="grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-2">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="space-y-1.5">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-5 w-full" />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -108,7 +146,7 @@ export default function EmployeeDetailPage({ params }: EmployeeDetailPageProps) 
   const emp = data;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-20 sm:pb-0">
       {/* Breadcrumb */}
       <nav
         aria-label="Breadcrumb"
@@ -159,7 +197,7 @@ export default function EmployeeDetailPage({ params }: EmployeeDetailPageProps) 
               />
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="hidden flex-wrap gap-2 sm:flex">
             <Button
               variant="outline"
               onClick={() => router.push(ROUTES.EMPLOYEES)}
@@ -190,7 +228,7 @@ export default function EmployeeDetailPage({ params }: EmployeeDetailPageProps) 
 
       {/* Tabs */}
       <Tabs defaultValue="pribadi">
-        <TabsList className="h-auto w-full justify-start gap-1 bg-muted/60 p-1">
+        <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto bg-muted/60 p-1">
           <TabsTrigger value="pribadi" className="h-9 px-4">
             Data Pribadi
           </TabsTrigger>
@@ -438,6 +476,39 @@ export default function EmployeeDetailPage({ params }: EmployeeDetailPageProps) 
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Mobile sticky action bar */}
+      <div className="fixed inset-x-0 bottom-0 z-20 flex items-center gap-2 border-t border-border bg-background/95 px-4 py-3 backdrop-blur sm:hidden">
+        <Button
+          variant="outline"
+          size="sm"
+          className="flex-1 gap-1.5"
+          onClick={() => router.push(ROUTES.EMPLOYEES)}
+        >
+          <ArrowLeft className="size-4" />
+          Kembali
+        </Button>
+        {canEdit && (
+          <>
+            <Button
+              size="sm"
+              className="flex-1 gap-1.5"
+              onClick={() => router.push(ROUTES.EMPLOYEES_EDIT(emp.id))}
+            >
+              <Pencil className="size-4" />
+              Edit
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setIsDeleteDialogOpen(true)}
+            >
+              <Trash2 className="size-4" />
+            </Button>
+          </>
+        )}
+      </div>
 
       <DeleteEmployeeDialog
         open={isDeleteDialogOpen}

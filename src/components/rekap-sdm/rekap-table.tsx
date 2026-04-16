@@ -1,5 +1,8 @@
 "use client";
 
+import { BarChart2 } from "lucide-react";
+
+import { EmptyState } from "@/components/shared/empty-state";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -42,10 +45,12 @@ export function RekapTable({
 
   if (rows.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-white px-6 py-16 text-center">
-        <p className="text-sm font-medium text-muted-foreground">
-          Belum ada data rekap
-        </p>
+      <div className="rounded-xl border border-border bg-white">
+        <EmptyState
+          icon={BarChart2}
+          title="Belum ada data rekap"
+          description="Data rekap akan muncul setelah ada karyawan aktif."
+        />
       </div>
     );
   }
@@ -66,7 +71,7 @@ export function RekapTable({
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-white">
       <div className="relative max-h-[600px] overflow-auto">
-        <table className="w-full text-sm">
+        <table className="w-full min-w-[500px] text-sm">
           <thead>
             <tr className="sticky top-0 z-10 border-b border-border bg-muted/50">
               <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">

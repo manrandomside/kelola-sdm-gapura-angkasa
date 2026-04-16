@@ -6,12 +6,14 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronRight,
+  FileSpreadsheet,
   History,
   Loader2,
   RefreshCw,
   XCircle,
 } from "lucide-react";
 
+import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 
 import { Pagination } from "@/components/shared/pagination";
@@ -319,20 +321,12 @@ export default function ImportLogsPage() {
                 </TableRow>
               ) : logs.length === 0 ? (
                 <TableRow>
-                  <TableCell
-                    colSpan={10}
-                    className="py-16 text-center"
-                  >
-                    <div className="flex flex-col items-center gap-2">
-                      <History className="size-10 text-muted-foreground/40" />
-                      <p className="text-sm font-medium text-muted-foreground">
-                        Belum ada riwayat import
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Riwayat akan muncul setelah Anda melakukan import
-                        data.
-                      </p>
-                    </div>
+                  <TableCell colSpan={10} className="p-0">
+                    <EmptyState
+                      icon={FileSpreadsheet}
+                      title="Belum ada riwayat import"
+                      description="Riwayat import akan muncul di sini setelah Anda melakukan import data karyawan."
+                    />
                   </TableCell>
                 </TableRow>
               ) : (

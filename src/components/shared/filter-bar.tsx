@@ -56,7 +56,7 @@ function FilterSelect({
         onChange(asString === ALL_VALUE ? null : asString);
       }}
     >
-      <SelectTrigger className={`h-10 ${minWidth}`}>
+      <SelectTrigger className={`h-10 w-full sm:w-auto ${minWidth}`}>
         <SelectValue>
           {(current: string) =>
             current === ALL_VALUE ? (
@@ -92,7 +92,7 @@ export function FilterBar({
   activeCount,
 }: FilterBarProps) {
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
       <FilterSelect
         label="Status Pegawai"
         value={status_pegawai}

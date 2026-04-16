@@ -18,6 +18,7 @@ import {
   YAxis,
 } from "recharts";
 
+import { EmptyState } from "@/components/shared/empty-state";
 import { useAnalytics } from "@/hooks/use-analytics";
 import { cn } from "@/lib/utils";
 
@@ -36,7 +37,7 @@ function ComparisonCard({ label, value, diff }: ComparisonCardProps) {
   const isNegative = diff < 0;
 
   return (
-    <div className="glass-card flex flex-col gap-1 rounded-2xl p-5">
+    <div className="glass-card flex flex-col gap-1 rounded-2xl p-4 sm:p-5">
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
       <p className="text-2xl font-bold tabular-nums text-foreground">
         {value.toLocaleString("id-ID")}
@@ -191,13 +192,13 @@ export default function AnalyticsPage() {
           Perbandingan Bulan Ini vs Bulan Lalu
         </h2>
         {isLoading ? (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             {Array.from({ length: 5 }).map((_, i) => (
               <CardSkeleton key={i} />
             ))}
           </div>
         ) : perbandingan ? (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             <ComparisonCard
               label="Total SDM"
               value={perbandingan.bulanIni.total}
@@ -311,9 +312,11 @@ export default function AnalyticsPage() {
                 </ComposedChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex h-[200px] items-center justify-center text-sm text-muted-foreground">
-                Belum ada data tren untuk periode ini.
-              </div>
+              <EmptyState
+                icon={TrendingUp}
+                title="Belum ada data tren"
+                description="Data tren akan muncul setelah ada karyawan dengan TMT mulai/berakhir kerja."
+              />
             )}
           </div>
         )}
@@ -329,7 +332,7 @@ export default function AnalyticsPage() {
         ) : (
           <div className="glass-card-subtle overflow-hidden rounded-2xl">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full min-w-[600px] text-sm">
                 <thead>
                   <tr className="border-b border-border bg-muted/30">
                     <th className="px-4 py-3 text-left font-semibold text-muted-foreground">

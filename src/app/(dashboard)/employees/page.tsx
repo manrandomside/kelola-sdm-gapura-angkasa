@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, CheckSquare, Clock, Download, Plus, Users, X } from "lucide-react";
+import { AlertTriangle, CheckSquare, Clock, Download, Filter, Plus, SearchX, Users, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -15,6 +15,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useEmployees } from "@/hooks/use-employees";
 import { ROUTES } from "@/lib/constants/routes";
 import { cn } from "@/lib/utils";
+import { EmptyState } from "@/components/shared/empty-state";
 import { useFilterStore } from "@/stores/filter-store";
 
 interface MiniStatProps {
@@ -46,7 +47,7 @@ function MiniStatCard({ label, value, tone, onClick }: MiniStatProps) {
   return (
     <div
       className={cn(
-        "flex-1 min-w-[140px] rounded-xl border border-border px-4 py-3",
+        "rounded-xl border border-border px-3 py-2.5 sm:px-4 sm:py-3",
         TONE_STYLES[tone],
         onClick && "cursor-pointer transition-shadow hover:ring-2 hover:ring-primary/20 hover:shadow-md",
       )}
@@ -141,6 +142,7 @@ export default function EmployeesPage() {
   const selectionCount = selectedIds.size;
 
   const [exportOpen, setExportOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   return (
     <div className="space-y-6">
@@ -166,9 +168,11 @@ export default function EmployeesPage() {
             onClick={() => setExportOpen(true)}
           >
             <Download className="size-4" />
-            {selectionCount > 0
-              ? `Export ${selectionCount} Terpilih`
-              : "Export"}
+            <span className="hidden sm:inline">
+              {selectionCount > 0
+                ? `Export ${selectionCount} Terpilih`
+                : "Export"}
+            </span>
           </Button>
           {canEdit && (
             <Button
@@ -177,14 +181,14 @@ export default function EmployeesPage() {
               className="gap-1.5"
             >
               <Plus className="size-4" />
-              Tambah Karyawan
+              <span className="hidden sm:inline">Tambah Karyawan</span>
             </Button>
           )}
         </div>
       </div>
 
       {/* Statistics mini cards */}
-      <div className="flex flex-wrap gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <MiniStatCard label="Total" value={statistics.total} tone="default" />
         <MiniStatCard
           label="Pegawai Tetap"
@@ -198,12 +202,12 @@ export default function EmployeesPage() {
       </div>
 
       {/* Contract status tabs */}
-      <div className="flex gap-1 rounded-xl border border-border bg-muted/40 p-1">
+      <div className="flex gap-1 overflow-x-auto rounded-xl border border-border bg-muted/40 p-1">
         <button
           type="button"
           onClick={() => { setContractTab("all"); setPage(1); }}
           className={cn(
-            "flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors",
+            "flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-colors",
             contractTab === "all"
               ? "bg-white text-foreground shadow-sm"
               : "text-muted-foreground hover:text-foreground",
@@ -227,7 +231,7 @@ export default function EmployeesPage() {
           type="button"
           onClick={() => { setContractTab("expiring"); setPage(1); }}
           className={cn(
-            "flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors",
+            "flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-colors",
             contractTab === "expiring"
               ? "bg-white text-foreground shadow-sm"
               : "text-muted-foreground hover:text-foreground",
@@ -250,7 +254,7 @@ export default function EmployeesPage() {
           type="button"
           onClick={() => { setContractTab("expired"); setPage(1); }}
           className={cn(
-            "flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors",
+            "flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-colors",
             contractTab === "expired"
               ? "bg-white text-foreground shadow-sm"
               : "text-muted-foreground hover:text-foreground",
@@ -280,44 +284,73 @@ export default function EmployeesPage() {
 
       {/* Toolbar: search + filters */}
       <div className="space-y-3">
-        <SearchInput value={search} onChange={setSearch} />
-        <FilterBar
-          status_pegawai={status_pegawai}
-          status_kontrak={status_kontrak}
-          unit_organisasi={unit_organisasi}
-          provider={provider}
-          status_kerja={status_kerja}
-          onChange={setFilter}
-          onClear={clearFilters}
-          activeCount={activeCount}
-        />
+        <div className="flex items-center gap-2">
+          <div className="flex-1">
+            <SearchInput value={search} onChange={setSearch} />
+          </div>
+          <button
+            type="button"
+            onClick={() => setFiltersOpen((v) => !v)}
+            className={cn(
+              "inline-flex h-10 items-center gap-1.5 rounded-lg border border-border px-3 text-sm font-medium transition-colors md:hidden",
+              filtersOpen || activeCount > 0
+                ? "border-primary bg-primary/5 text-primary"
+                : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+            )}
+          >
+            <Filter className="size-4" />
+            Filter
+            {activeCount > 0 && (
+              <span className="flex size-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-white">
+                {activeCount}
+              </span>
+            )}
+          </button>
+        </div>
+        <div className={cn("md:block", filtersOpen ? "block" : "hidden")}>
+          <FilterBar
+            status_pegawai={status_pegawai}
+            status_kontrak={status_kontrak}
+            unit_organisasi={unit_organisasi}
+            provider={provider}
+            status_kerja={status_kerja}
+            onChange={setFilter}
+            onClear={clearFilters}
+            activeCount={activeCount}
+          />
+        </div>
       </div>
 
       {/* Selection bar */}
       {selectionCount > 0 && (
-        <div className="flex items-center gap-3 rounded-xl border-l-4 border-primary bg-primary/5 px-4 py-3 animate-in fade-in slide-in-from-top-1 duration-200">
-          <CheckSquare className="size-4 text-primary" />
-          <span className="text-sm font-semibold text-foreground">
-            {selectionCount} karyawan dipilih
-          </span>
-          <div className="flex-1" />
-          <Button
-            size="sm"
-            className="gap-1.5"
-            onClick={() => setExportOpen(true)}
-          >
-            <Download className="size-3.5" />
-            Export {selectionCount} Terpilih
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="gap-1.5 text-muted-foreground"
-            onClick={() => setSelectedIds(new Set())}
-          >
-            <X className="size-3.5" />
-            Hapus Pilihan
-          </Button>
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border-l-4 border-primary bg-primary/5 px-4 py-3 animate-in fade-in slide-in-from-top-1 duration-200 sm:gap-3">
+          <div className="flex items-center gap-2">
+            <CheckSquare className="size-4 text-primary" />
+            <span className="text-sm font-semibold text-foreground">
+              {selectionCount} karyawan dipilih
+            </span>
+          </div>
+          <div className="hidden flex-1 sm:block" />
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setExportOpen(true)}
+            >
+              <Download className="size-3.5" />
+              <span className="hidden sm:inline">Export {selectionCount} Terpilih</span>
+              <span className="sm:hidden">Export</span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1.5 text-muted-foreground"
+              onClick={() => setSelectedIds(new Set())}
+            >
+              <X className="size-3.5" />
+              <span className="hidden sm:inline">Hapus Pilihan</span>
+            </Button>
+          </div>
         </div>
       )}
 
@@ -343,6 +376,25 @@ export default function EmployeesPage() {
         selectedIds={selectedIds}
         onSelectionChange={setSelectedIds}
       />
+
+      {/* Empty states */}
+      {!query.isLoading && !query.isFetching && employees.length === 0 && (
+        (search || activeCount > 0) ? (
+          <EmptyState
+            icon={SearchX}
+            title="Tidak ada karyawan yang cocok"
+            description="Coba ubah kata kunci pencarian atau filter Anda."
+            action={{ label: "Reset Filter", onClick: () => { clearFilters(); setSearch(""); } }}
+          />
+        ) : (
+          <EmptyState
+            icon={Users}
+            title="Belum ada data karyawan"
+            description="Mulai dengan menambahkan karyawan pertama atau import data dari Excel."
+            action={canEdit ? { label: "Tambah Karyawan", href: ROUTES.EMPLOYEES_CREATE } : undefined}
+          />
+        )
+      )}
 
       {/* Pagination */}
       <Pagination

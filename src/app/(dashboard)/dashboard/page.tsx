@@ -195,7 +195,8 @@ export default function DashboardPage() {
                 render={<Link href={ROUTES.EMPLOYEES_CREATE} />}
               >
                 <Plus className="size-4" />
-                Tambah Karyawan
+                <span className="hidden sm:inline">Tambah Karyawan</span>
+                <span className="sm:hidden">Tambah</span>
               </Button>
               <Button
                 variant="outline"
@@ -204,7 +205,8 @@ export default function DashboardPage() {
                 render={<Link href={ROUTES.IMPORT} />}
               >
                 <Upload className="size-4" />
-                Import Excel
+                <span className="hidden sm:inline">Import Excel</span>
+                <span className="sm:hidden">Import</span>
               </Button>
             </>
           )}
@@ -215,7 +217,8 @@ export default function DashboardPage() {
             render={<Link href={ROUTES.EMPLOYEES} />}
           >
             <Download className="size-4" />
-            Export Excel
+            <span className="hidden sm:inline">Export Excel</span>
+            <span className="sm:hidden">Export</span>
           </Button>
         </div>
       </div>

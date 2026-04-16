@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Activity, ExternalLink, RotateCcw } from "lucide-react";
+import { Activity, ExternalLink, Filter, RotateCcw, ScrollText } from "lucide-react";
 
 import { Pagination } from "@/components/shared/pagination";
 import { SearchInput } from "@/components/shared/search-input";
@@ -24,6 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { EmptyState } from "@/components/shared/empty-state";
 import { useActivityLogs } from "@/hooks/use-activity-logs";
 import { ROUTES } from "@/lib/constants/routes";
 import { formatDateTimeWITA } from "@/lib/utils/date";
@@ -106,24 +107,6 @@ function LoadingRows() {
   );
 }
 
-function EmptyState() {
-  return (
-    <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-      <div className="flex size-16 items-center justify-center rounded-full bg-muted">
-        <Activity className="size-8 text-muted-foreground" />
-      </div>
-      <div className="space-y-1">
-        <p className="text-base font-semibold text-foreground">
-          Belum ada aktivitas tercatat
-        </p>
-        <p className="text-sm text-muted-foreground">
-          Aktivitas pengguna akan muncul di sini seiring penggunaan sistem.
-        </p>
-      </div>
-    </div>
-  );
-}
-
 export default function ActivityLogsPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -131,6 +114,7 @@ export default function ActivityLogsPage() {
   const [activityGroup, setActivityGroup] = useState<string | null>(null);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const query = useActivityLogs({
     page,
@@ -192,78 +176,97 @@ export default function ActivityLogsPage() {
       </div>
 
       {/* Toolbar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-        <SearchInput
-          value={search}
-          onChange={handleSearchChange}
-          placeholder="Cari deskripsi atau target..."
-        />
-        <Select
-          value={activityGroup ?? ALL_VALUE}
-          onValueChange={(next) => {
-            const asString = next as string;
-            handleGroupChange(asString === ALL_VALUE ? null : asString);
-          }}
-        >
-          <SelectTrigger className="h-10 min-w-[180px]">
-            <SelectValue>
-              {(current: string) =>
-                current === ALL_VALUE ? (
-                  <span className="text-muted-foreground">Tipe Aktivitas</span>
-                ) : (
-                  <span>
-                    {ACTIVITY_GROUP_OPTIONS.find((o) => o.value === current)
-                      ?.label ?? current}
-                  </span>
-                )
-              }
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL_VALUE}>
-              <span className="text-muted-foreground">Semua Tipe</span>
-            </SelectItem>
-            {ACTIVITY_GROUP_OPTIONS.map((opt) => (
-              <SelectItem key={opt.value} value={opt.value}>
-                {opt.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div className="space-y-3">
         <div className="flex items-center gap-2">
-          <Input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => {
-              setDateFrom(e.target.value);
-              setPage(1);
-            }}
-            className="h-10 w-[160px]"
-            placeholder="Dari tanggal"
-          />
-          <span className="text-sm text-muted-foreground">-</span>
-          <Input
-            type="date"
-            value={dateTo}
-            onChange={(e) => {
-              setDateTo(e.target.value);
-              setPage(1);
-            }}
-            className="h-10 w-[160px]"
-            placeholder="Sampai tanggal"
-          />
-        </div>
-        {hasActiveFilters && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleResetFilters}
-            className="h-10"
+          <div className="flex-1">
+            <SearchInput
+              value={search}
+              onChange={handleSearchChange}
+              placeholder="Cari deskripsi atau target..."
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => setFiltersOpen((v) => !v)}
+            className={cn(
+              "inline-flex h-10 items-center gap-1.5 rounded-lg border border-border px-3 text-sm font-medium transition-colors md:hidden",
+              filtersOpen || hasActiveFilters
+                ? "border-primary bg-primary/5 text-primary"
+                : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+            )}
           >
-            <RotateCcw className="size-4" />
-            Reset Filter
-          </Button>
-        )}
+            <Filter className="size-4" />
+            Filter
+          </button>
+        </div>
+        <div className={cn("flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center md:flex", filtersOpen ? "flex" : "hidden")}>
+          <Select
+            value={activityGroup ?? ALL_VALUE}
+            onValueChange={(next) => {
+              const asString = next as string;
+              handleGroupChange(asString === ALL_VALUE ? null : asString);
+            }}
+          >
+            <SelectTrigger className="h-10 min-w-[180px]">
+              <SelectValue>
+                {(current: string) =>
+                  current === ALL_VALUE ? (
+                    <span className="text-muted-foreground">Tipe Aktivitas</span>
+                  ) : (
+                    <span>
+                      {ACTIVITY_GROUP_OPTIONS.find((o) => o.value === current)
+                        ?.label ?? current}
+                    </span>
+                  )
+                }
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_VALUE}>
+                <span className="text-muted-foreground">Semua Tipe</span>
+              </SelectItem>
+              {ACTIVITY_GROUP_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => {
+                setDateFrom(e.target.value);
+                setPage(1);
+              }}
+              className="h-10 w-full min-w-[140px] sm:w-[160px]"
+              placeholder="Dari tanggal"
+            />
+            <span className="hidden text-sm text-muted-foreground sm:inline">-</span>
+            <Input
+              type="date"
+              value={dateTo}
+              onChange={(e) => {
+                setDateTo(e.target.value);
+                setPage(1);
+              }}
+              className="h-10 w-full min-w-[140px] sm:w-[160px]"
+              placeholder="Sampai tanggal"
+            />
+          </div>
+          {hasActiveFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleResetFilters}
+              className="h-10"
+            >
+              <RotateCcw className="size-4" />
+              Reset Filter
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Error state */}
@@ -275,8 +278,8 @@ export default function ActivityLogsPage() {
       )}
 
       {/* Table */}
-      <div className="rounded-xl border border-border bg-card">
-        <Table>
+      <div className="overflow-x-auto rounded-xl border border-border bg-card">
+        <Table className="min-w-[700px]">
           <TableHeader>
             <TableRow className="bg-muted/30 hover:bg-muted/30">
               <TableHead className="w-[170px] text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -302,7 +305,11 @@ export default function ActivityLogsPage() {
             ) : activities.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="p-0">
-                  <EmptyState />
+                  <EmptyState
+                    icon={ScrollText}
+                    title="Belum ada aktivitas"
+                    description="Aktivitas akan terekam di sini saat ada perubahan data atau aksi penting."
+                  />
                 </TableCell>
               </TableRow>
             ) : (

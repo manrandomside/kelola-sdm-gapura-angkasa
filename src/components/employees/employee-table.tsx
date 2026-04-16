@@ -190,7 +190,8 @@ export function EmployeeTable({
   }
 
   return (
-    <div className="rounded-xl border border-border bg-card">
+    <div className="overflow-hidden rounded-xl border border-border bg-card">
+      <div className="overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow className="bg-muted/30 hover:bg-muted/30">
@@ -346,6 +347,7 @@ export function EmployeeTable({
           )}
         </TableBody>
       </Table>
+      </div>
 
       <DeleteEmployeeDialog
         open={deleteTarget !== null}
