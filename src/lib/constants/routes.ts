@@ -16,4 +16,5 @@ export const ROUTES = {
   REPORTS: "/reports",
   ASSISTANT: "/assistant",
   ACTIVITY_LOGS: "/activity-logs",
+  CHANGE_PASSWORD: "/settings/password",
 } as const;

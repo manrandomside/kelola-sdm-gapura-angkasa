@@ -6,7 +6,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { toast } from "@/lib/utils/toast";
 
 import type { UserRole } from "@/lib/constants/enums";
 import type { ApiResponse } from "@/types/api";

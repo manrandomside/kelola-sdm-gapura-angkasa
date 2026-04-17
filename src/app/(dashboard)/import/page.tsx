@@ -22,7 +22,7 @@ import {
   XCircle,
 } from "lucide-react";
 import * as XLSX from "xlsx";
-import { toast } from "sonner";
+import { toast } from "@/lib/utils/toast";
 
 import { Pagination } from "@/components/shared/pagination";
 import {

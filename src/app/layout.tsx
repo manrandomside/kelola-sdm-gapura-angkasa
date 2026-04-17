@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Figtree } from "next/font/google";
 import "./globals.css";
 
+import { Toaster } from "@/components/ui/sonner";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
 
@@ -55,6 +56,13 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col font-sans">
         <ServiceWorkerRegister />
         <QueryProvider>{children}</QueryProvider>
+        <Toaster
+          position="top-right"
+          duration={4000}
+          richColors
+          closeButton
+          theme="light"
+        />
       </body>
     </html>
   );

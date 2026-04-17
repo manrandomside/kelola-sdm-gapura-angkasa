@@ -161,6 +161,7 @@ src/
       export/page.tsx
       users/page.tsx                # super_admin only
       activity-logs/page.tsx
+      settings/password/page.tsx  # ubah password
     api/
       auth/{login,logout,session}/route.ts
       employees/route.ts            # GET (list), POST (create)
@@ -233,9 +234,9 @@ src/
 - [x] Polish: Responsive mobile layout
 - [x] Polish: Loading states (skeleton/spinner)
 - [x] Polish: Empty states with illustration
-- [ ] Polish: Toast notifications improvement
-- [ ] Polish: Error boundaries
-- [ ] Polish: Change password page
+- [x] Polish: Toast notifications improvement
+- [x] Polish: Error boundaries
+- [x] Polish: Change password page
 
 ### Phase 7: UI/UX Improvement & Landing Page
 
@@ -460,6 +461,26 @@ src/
 - Empty States: reusable `EmptyState` component (`src/components/shared/empty-state.tsx`) used across: employees (no data + no results), activity logs, import logs, rekap SDM, analytics
 - Loading Skeletons: inline skeletons per page (dashboard stat/chart, employee table, detail, edit, rekap, analytics, activity logs, import logs)
 - Reusable `TableSkeleton` component at `src/components/shared/table-skeleton.tsx`
+
+### Toast Notifications (2026-04-17)
+- Toast utility wrapper: `src/lib/utils/toast.ts` — standardized success/error/warning/info/loading/promise methods with consistent durations (success 4s, error 5s, warning 4.5s)
+- Toast messages constants: `src/lib/constants/toast-messages.ts` — standardized Indonesian messages
+- All toast imports migrated from `sonner` to `@/lib/utils/toast` wrapper across: hooks (use-employee-detail, use-export, use-import, use-users), components (employee-form), pages (import, reports)
+- Toaster configured globally: position top-right, richColors, closeButton, theme light, duration 4000ms
+- Toaster mounted in both root layout and dashboard layout for coverage
+
+### Error Boundaries (2026-04-17)
+- ErrorBoundary component: `src/components/shared/error-boundary.tsx` — class component, dev error details, Muat Ulang + Ke Beranda buttons
+- Global error page: `src/app/error.tsx` — Next.js error boundary for unhandled errors
+- 404 page: `src/app/not-found.tsx` — friendly "Halaman Tidak Ditemukan" page
+- Dashboard layout wraps children with ErrorBoundary
+
+### Change Password (2026-04-17)
+- API: `POST /api/auth/change-password` — validates current password via signInWithPassword, updates via admin.updateUserById, logs activity
+- Page: `/settings/password` — react-hook-form + zod validation, show/hide toggle, min 6 chars, confirm match
+- Hook: `src/hooks/use-change-password.ts` — useMutation with toast feedback
+- Sidebar: "Ubah Password" link with Key icon in footer section, all roles can access
+- Route: `ROUTES.CHANGE_PASSWORD = "/settings/password"`
 
 ### Known Issues
 - Vercel Hobby timeout 60s: import bulk harus via localhost

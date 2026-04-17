@@ -10,7 +10,7 @@ import {
   ChevronDown,
   FileSpreadsheet,
   FileText,
-
+  Key,
   LayoutDashboard,
   List,
   LogOut,
@@ -285,6 +285,14 @@ export function Sidebar({
             )}
           </div>
         </div>
+        <Link
+          href={ROUTES.CHANGE_PASSWORD}
+          onClick={handleNavigate}
+          className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+        >
+          <Key className="h-4 w-4" aria-hidden="true" />
+          Ubah Password
+        </Link>
         <button
           type="button"
           onClick={onLogout}
