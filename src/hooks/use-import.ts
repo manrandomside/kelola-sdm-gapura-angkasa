@@ -4,7 +4,25 @@ import { keepPreviousData, useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "@/lib/utils/toast";
 
 import type { ApiResponse } from "@/types/api";
-import type { ImportPreviewResult, NormalizedRow } from "@/lib/utils/excel";
+import type {
+  EnhancedImportPreviewResult,
+  ImportPreviewResult,
+  NormalizedRow,
+} from "@/lib/utils/excel";
+
+// ============================================================================
+// Constants & Helpers
+// ============================================================================
+
+export const BATCH_SIZE = 50;
+
+export function chunkArray<T>(array: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < array.length; i += size) {
+    chunks.push(array.slice(i, i + size));
+  }
+  return chunks;
+}
 
 // ============================================================================
 // useDownloadTemplate — fetch /api/import/template lalu trigger download
@@ -17,7 +35,6 @@ async function downloadTemplate(): Promise<void> {
   });
 
   if (!res.ok) {
-    // Coba parse error JSON.
     try {
       const json = (await res.json()) as ApiResponse<unknown>;
       if (!json.success) throw new Error(json.error.message);
@@ -53,10 +70,10 @@ export function useDownloadTemplate() {
 }
 
 // ============================================================================
-// useImportPreview — upload file ke /api/import/preview, return preview data
-// dengan ringkasan validasi.
+// useImportPreview — upload file ke /api/import/preview, return enhanced
+// preview data with per-cell validation, duplicate detection, column mapping.
 // ============================================================================
-async function uploadPreviewFile(file: File): Promise<ImportPreviewResult> {
+async function uploadPreviewFile(file: File): Promise<EnhancedImportPreviewResult> {
   const formData = new FormData();
   formData.append("file", file);
 
@@ -66,7 +83,7 @@ async function uploadPreviewFile(file: File): Promise<ImportPreviewResult> {
     body: formData,
   });
 
-  const json = (await res.json()) as ApiResponse<ImportPreviewResult>;
+  const json = (await res.json()) as ApiResponse<EnhancedImportPreviewResult>;
   if (!json.success) {
     throw new Error(json.error.message);
   }
@@ -86,8 +103,7 @@ export function useImportPreview() {
 
 // ============================================================================
 // useImportExecute — kirim row yang valid + warning ke /api/import/execute.
-// Proses panjang (1414 row ~ 5-15 menit); gunakan timeout fetch default dan
-// andalkan maxDuration di route.
+// Kept for backward compatibility with existing import flow.
 // ============================================================================
 export interface ImportExecuteRow {
   rowNumber: number;
@@ -140,6 +156,118 @@ export function useImportExecute() {
     onError: (error) => {
       const message =
         error instanceof Error ? error.message : "Gagal mengeksekusi import";
+      toast.error(message);
+    },
+  });
+}
+
+// ============================================================================
+// useImportBatch — mutation untuk POST /api/import/execute-batch.
+// Processes one batch at a time, max 50 rows per batch.
+// ============================================================================
+
+export interface BatchExecuteRow {
+  rowNumber: number;
+  data: NormalizedRow;
+  isExistingNip?: boolean;
+}
+
+export interface BatchError {
+  row: number;
+  field: string;
+  message: string;
+  value: string;
+}
+
+export interface BatchExecutePayload {
+  rows: BatchExecuteRow[];
+  batchIndex: number;
+  totalBatches: number;
+  importLogId?: string;
+  fileName: string;
+}
+
+export interface BatchExecuteResult {
+  importLogId: string;
+  batchIndex: number;
+  batchSuccess: number;
+  batchErrors: number;
+  batchSkipped: number;
+  errors: BatchError[];
+  newAccounts: number;
+  updatedRecords: number;
+  insertedRecords: number;
+}
+
+async function executeBatch(
+  payload: BatchExecutePayload,
+): Promise<BatchExecuteResult> {
+  const res = await fetch("/api/import/execute-batch", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  const json = (await res.json()) as ApiResponse<BatchExecuteResult>;
+  if (!json.success) {
+    throw new Error(json.error.message);
+  }
+  return json.data;
+}
+
+export function useImportBatch() {
+  return useMutation({
+    mutationFn: (payload: BatchExecutePayload) => executeBatch(payload),
+    onError: (error) => {
+      const message =
+        error instanceof Error ? error.message : "Gagal mengeksekusi batch import";
+      toast.error(message);
+    },
+  });
+}
+
+// ============================================================================
+// useImportRollback — mutation untuk POST /api/import/rollback.
+// ============================================================================
+
+export interface RollbackPayload {
+  importLogId: string;
+}
+
+export interface RollbackResult {
+  deletedEmployees: number;
+  restoredEmployees: number;
+  deletedAccounts: number;
+  message: string;
+}
+
+async function rollbackImport(
+  payload: RollbackPayload,
+): Promise<RollbackResult> {
+  const res = await fetch("/api/import/rollback", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  const json = (await res.json()) as ApiResponse<RollbackResult>;
+  if (!json.success) {
+    throw new Error(json.error.message);
+  }
+  return json.data;
+}
+
+export function useImportRollback() {
+  return useMutation({
+    mutationFn: (payload: RollbackPayload) => rollbackImport(payload),
+    onSuccess: (data) => {
+      toast.success(data.message);
+    },
+    onError: (error) => {
+      const message =
+        error instanceof Error ? error.message : "Gagal melakukan rollback import";
       toast.error(message);
     },
   });

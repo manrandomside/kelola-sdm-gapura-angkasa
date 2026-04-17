@@ -116,6 +116,49 @@ export interface ImportPreviewResult {
   headers: string[];
 }
 
+// Enhanced preview types for per-cell validation + duplicate detection
+export interface DuplicateNipInfo {
+  nip: string;
+  namaLengkap: string;
+  existingName: string;
+  action: "update";
+}
+
+export interface NewNipInfo {
+  nip: string;
+  namaLengkap: string;
+  action: "insert";
+}
+
+export interface CellError {
+  field: string;
+  value: string | null;
+  message: string;
+}
+
+export interface EnhancedPreviewRow {
+  rowIndex: number;
+  data: NormalizedRow;
+  isValid: boolean;
+  cellErrors: CellError[];
+  action: "insert" | "update" | "skip";
+}
+
+export interface DetectedColumn {
+  excelHeader: string;
+  mappedField: string | null;
+  confidence: "exact" | "fuzzy" | "unmapped";
+}
+
+export interface EnhancedImportPreviewResult extends ImportPreviewResult {
+  duplicateNips: DuplicateNipInfo[];
+  newNips: NewNipInfo[];
+  duplicateCount: number;
+  newCount: number;
+  enhancedRows: EnhancedPreviewRow[];
+  detectedColumns: DetectedColumn[];
+}
+
 // ============================================================================
 // Template headers (45 kolom) — digunakan untuk generate template .xlsx
 // Urutan dan nama mengikuti format CSV sumber agar kompatibel dengan data
@@ -290,6 +333,115 @@ function lookupField(header: string): NormalizedField | null {
   }
 
   return null;
+}
+
+// ============================================================================
+// Column mapping detection for enhanced preview
+// ============================================================================
+
+const COLUMN_MAPPING_UPPER: Record<string, string> = {
+  "NO": "no",
+  "NIP": "nip",
+  "KTP / NIK": "nik",
+  "KTP/NIK": "nik",
+  "NIK": "nik",
+  "NAMA LENGKAP": "nama_lengkap",
+  "NAMA": "nama_lengkap",
+  "LOKASI KERJA": "lokasi_kerja",
+  "CABANG": "cabang",
+  "STATUS PEGAWAI": "status_pegawai",
+  "STATUS KONTRAK": "status_kontrak",
+  "STATUS KERJA": "status_kerja",
+  "PROVIDER": "provider",
+  "UNIT ORGANISASI": "unit_organisasi",
+  "KODE ORGANISASI": "kode_organisasi",
+  "NAMA ORGANISASI": "nama_organisasi",
+  "SUB UNIT ORGANISASI": "sub_unit_organisasi",
+  "NAMA JABATAN": "nama_jabatan",
+  "UNIT KERJA SESUAI KONTRAK": "unit_kerja_kontrak",
+  "TMT MULAI KERJA": "tmt_mulai_kerja",
+  "TMT MULAI JABATAN": "tmt_mulai_jabatan",
+  "TMT BERAKHIR JABATAN": "tmt_berakhir_jabatan",
+  "TMT BERAKHIR KERJA": "tmt_berakhir_kerja",
+  "MASA KERJA (BULAN)": "masa_kerja_bulan",
+  "MASA KERJA (TAHUN)": "masa_kerja_tahun",
+  "JENIS KELAMIN": "jenis_kelamin",
+  "JENIS SEPATU": "jenis_sepatu",
+  "UKURAN SEPATU": "ukuran_sepatu",
+  "TEMPAT LAHIR": "tempat_lahir",
+  "TANGGAL LAHIR": "tanggal_lahir",
+  "USIA": "usia",
+  "KOTA DOMISILI": "kota_domisili",
+  "ALAMAT": "alamat",
+  "PENDIDIKAN": "pendidikan",
+  "NAMA INSTANSI PENDIDIKAN": "instansi_pendidikan",
+  "JURUSAN": "jurusan",
+  "REMARKS PENDIDIKAN": "remarks_pendidikan",
+  "TAHUN LULUS": "tahun_lulus",
+  "HANDPHONE": "handphone",
+  "KATEGORI KARYAWAN": "kategori_karyawan",
+  "TMT PENSIUN": "tmt_pensiun",
+  "GRADE": "grade",
+  "NO BPJS KESEHATAN": "no_bpjs_kesehatan",
+  "NO BPJS KETENAGAKERJAAN": "no_bpjs_ketenagakerjaan",
+  "KELOMPOK JABATAN": "kelompok_jabatan",
+  "KELAS JABATAN": "kelas_jabatan",
+  "WEIGHT": "weight",
+  "HEIGHT": "height",
+  "EMAIL": "email",
+  "MASA KERJA": "masa_kerja_bulan",
+};
+
+function fuzzyMatchColumn(header: string): string | null {
+  const normalized = header.trim().toUpperCase().replace(/[^A-Z0-9 ]/g, " ").replace(/\s+/g, " ");
+  for (const [key, value] of Object.entries(COLUMN_MAPPING_UPPER)) {
+    const normalizedKey = key.replace(/[^A-Z0-9 ]/g, " ").replace(/\s+/g, " ");
+    if (normalized === normalizedKey) return value;
+    if (normalized.includes(normalizedKey) || normalizedKey.includes(normalized)) return value;
+  }
+  return null;
+}
+
+export function detectColumnMapping(headers: string[]): DetectedColumn[] {
+  return headers.map((header) => {
+    const firstLine = header.split(/\r?\n/)[0] ?? "";
+    const trimmed = firstLine.trim().toUpperCase();
+
+    // Exact match
+    if (COLUMN_MAPPING_UPPER[trimmed]) {
+      return {
+        excelHeader: header,
+        mappedField: COLUMN_MAPPING_UPPER[trimmed],
+        confidence: "exact" as const,
+      };
+    }
+
+    // Try via existing lookupField (handles multi-line headers)
+    const fieldViaLookup = lookupField(header);
+    if (fieldViaLookup) {
+      return {
+        excelHeader: header,
+        mappedField: fieldViaLookup,
+        confidence: "exact" as const,
+      };
+    }
+
+    // Fuzzy match
+    const fuzzy = fuzzyMatchColumn(header);
+    if (fuzzy) {
+      return {
+        excelHeader: header,
+        mappedField: fuzzy,
+        confidence: "fuzzy" as const,
+      };
+    }
+
+    return {
+      excelHeader: header,
+      mappedField: null,
+      confidence: "unmapped" as const,
+    };
+  });
 }
 
 function cleanString(value: unknown): string | null {
@@ -1086,59 +1238,92 @@ export function generateImportTemplate(): ArrayBuffer {
   const guideTitleStyle = {
     font: { name: "Arial", sz: 14, bold: true },
   };
+  const guideSectionStyle = {
+    font: { name: "Arial", sz: 12, bold: true, color: { rgb: "FF439454" } },
+  };
 
   const guideWs: XLSXStyle.WorkSheet = {};
-  const guideLines: Array<{ row: number; text: string; style: unknown }> = [
-    { row: 0, text: "PANDUAN PENGISIAN TEMPLATE IMPORT DATA SDM", style: guideTitleStyle },
-    { row: 2, text: "Aturan Umum:", style: guideBoldStyle },
-    { row: 3, text: "1. Isi data mulai dari baris ke-3 (di bawah header hijau)", style: guideStyle },
-    { row: 4, text: "2. Kolom NIP dan NAMA LENGKAP wajib diisi", style: guideStyle },
-    { row: 5, text: "3. Format tanggal: dd/mm/yyyy (contoh: 01/05/2025)", style: guideStyle },
-    { row: 6, text: "4. Jenis Kelamin: L (Laki-laki) atau P (Perempuan)", style: guideStyle },
-    { row: 7, text: "5. Status Pegawai: PEGAWAI TETAP, PKWT, atau TAD", style: guideStyle },
-    { row: 8, text: "6. Status Kontrak: PEGAWAI TETAP, PKWT, PAKET SDM, atau PAKET PEKERJAAN", style: guideStyle },
-    { row: 9, text: "7. Status Kerja: Aktif atau Non Aktif", style: guideStyle },
-    { row: 10, text: "8. Lokasi Kerja selalu: Bandar Udara Ngurah Rai", style: guideStyle },
-    { row: 11, text: "9. Cabang selalu: DPS", style: guideStyle },
-    { row: 12, text: "10. Jika NIP sudah ada di sistem, data akan di-UPDATE (bukan duplikat)", style: guideStyle },
-    { row: 13, text: "11. Setiap karyawan yang berhasil di-import otomatis mendapat akun login (NIP = password)", style: guideStyle },
-    { row: 15, text: "Daftar Provider:", style: guideBoldStyle },
-  ];
+  let rowNum = 0;
+  const guideLines: Array<{ row: number; text: string; style: unknown }> = [];
 
-  // Add provider list
+  function addLine(text: string, style: unknown, skipAfter = 0) {
+    guideLines.push({ row: rowNum, text, style });
+    rowNum += 1 + skipAfter;
+  }
+
+  addLine("PANDUAN PENGISIAN TEMPLATE IMPORT DATA SDM", guideTitleStyle, 1);
+
+  // Aturan Umum
+  addLine("ATURAN UMUM", guideSectionStyle);
+  addLine("1. Isi data mulai dari baris ke-3 (di bawah header hijau)", guideStyle);
+  addLine("2. Kolom NIP dan NAMA LENGKAP wajib diisi (kolom lain opsional)", guideStyle);
+  addLine("3. Format tanggal yang diterima: dd/mm/yyyy, yyyy-mm-dd, atau dd-mm-yyyy", guideStyle);
+  addLine("4. Jenis Kelamin: L (Laki-laki) atau P (Perempuan)", guideStyle);
+  addLine("5. Jika NIP sudah ada di sistem, data akan di-UPDATE (bukan duplikat)", guideStyle);
+  addLine("6. Setiap karyawan baru otomatis mendapat akun login (NIP = password)", guideStyle);
+  addLine("7. Nilai '-', '?', 'N/A', atau kosong dianggap sebagai data kosong (NULL)", guideStyle);
+  addLine("8. Lokasi Kerja selalu: Bandar Udara Ngurah Rai", guideStyle);
+  addLine("9. Cabang selalu: DPS", guideStyle, 1);
+
+  // Penjelasan Kolom
+  addLine("PENJELASAN KOLOM", guideSectionStyle);
+  addLine("NO - Nomor urut (otomatis, opsional)", guideStyle);
+  addLine("NIP - Nomor Induk Pegawai (WAJIB, unik)", guideStyle);
+  addLine("KTP / NIK - Nomor KTP/NIK (unik jika diisi)", guideStyle);
+  addLine("NAMA LENGKAP - Nama lengkap karyawan (WAJIB)", guideStyle);
+  addLine("STATUS PEGAWAI - PEGAWAI TETAP / PKWT / TAD", guideStyle);
+  addLine("STATUS KONTRAK - PEGAWAI TETAP / PKWT / PAKET SDM / PAKET PEKERJAAN", guideStyle);
+  addLine("STATUS KERJA - Aktif / Non Aktif / Pensiun / Mutasi", guideStyle);
+  addLine("PROVIDER - Nama perusahaan provider (lihat daftar di bawah)", guideStyle);
+  addLine("UNIT ORGANISASI - Airside / Landside / GSE / GH / Back Office / Ancillary / Avsec / EGM / GM", guideStyle);
+  addLine("KODE ORGANISASI - MO / ME / MF / MS / MU / MK / MQ / MB / EGM / GM (opsional)", guideStyle);
+  addLine("TMT MULAI KERJA - Tanggal mulai kerja (format tanggal)", guideStyle);
+  addLine("TMT BERAKHIR KERJA - Tanggal berakhir kerja (format tanggal)", guideStyle);
+  addLine("TMT PENSIUN - Tanggal pensiun (format tanggal)", guideStyle);
+  addLine("USIA - Angka (tahun)", guideStyle);
+  addLine("TAHUN LULUS - Angka 4 digit (contoh: 2020)", guideStyle);
+  addLine("HEIGHT - Tinggi badan dalam cm (angka)", guideStyle);
+  addLine("WEIGHT - Berat badan dalam kg (angka)", guideStyle);
+  addLine("UKURAN SEPATU - Angka 36-46", guideStyle);
+  addLine("EMAIL - Format email valid (opsional)", guideStyle);
+  addLine("KELOMPOK JABATAN - ACCOUNT EXECUTIVE / AE, EXECUTIVE GENERAL MANAGER, GENERAL MANAGER, MANAGER, STAFF, SUPERVISOR, NON", guideStyle, 1);
+
+  // Mapping Status
+  addLine("MAPPING STATUS KONTRAK KE STATUS PEGAWAI", guideSectionStyle);
+  addLine("PEGAWAI TETAP (kontrak) -> PEGAWAI TETAP (pegawai)", guideStyle);
+  addLine("PKWT (kontrak) -> PKWT (pegawai) -- BUKAN TAD", guideStyle);
+  addLine("PAKET SDM (kontrak) -> TAD (pegawai)", guideStyle);
+  addLine("PAKET PEKERJAAN (kontrak) -> TAD (pegawai)", guideStyle, 1);
+
+  // Daftar Provider
+  addLine("DAFTAR PROVIDER", guideSectionStyle);
   PROVIDER_OPTIONS.forEach((provider, idx) => {
-    guideLines.push({
-      row: 16 + idx,
-      text: `${idx + 1}. ${provider}`,
-      style: guideStyle,
-    });
+    addLine(`${idx + 1}. ${provider}`, guideStyle);
   });
+  rowNum += 1;
 
-  const unitOrgStart = 16 + PROVIDER_OPTIONS.length + 1;
-  guideLines.push({
-    row: unitOrgStart,
-    text: "Daftar Unit Organisasi:",
-    style: guideBoldStyle,
-  });
-
+  // Daftar Unit Organisasi
+  addLine("DAFTAR UNIT ORGANISASI", guideSectionStyle);
   const unitList = [
-    "Airside (MO)", "Landside (ME)", "GSE (MF)", "GH (MS)",
-    "Back Office (MU, MK)", "Ancillary (MB)", "Avsec (MQ)", "EGM", "GM",
+    "Airside (Kode: MO)", "Landside (Kode: ME)", "GSE (Kode: MF)", "GH (Kode: MS)",
+    "Back Office (Kode: MU, MK)", "Ancillary (Kode: MB)", "Avsec (Kode: MQ)", "EGM", "GM",
   ];
-  unitList.forEach((unit, idx) => {
-    guideLines.push({
-      row: unitOrgStart + 1 + idx,
-      text: `${idx + 1}. ${unit}`,
-      style: guideStyle,
-    });
+  unitList.forEach((u, idx) => {
+    addLine(`${idx + 1}. ${u}`, guideStyle);
   });
+  rowNum += 1;
+
+  // Contoh Data
+  addLine("CONTOH DATA (2 BARIS)", guideSectionStyle);
+  addLine("NIP: 12345 | Nama: Budi Santoso | Status Pegawai: PEGAWAI TETAP | Status Kontrak: PEGAWAI TETAP | Status Kerja: Aktif | Provider: PT Gapura Angkasa | Unit: Airside | TMT Mulai: 01/01/2020", guideStyle);
+  addLine("NIP: 67890 | Nama: Siti Rahayu | Status Pegawai: TAD | Status Kontrak: PAKET SDM | Status Kerja: Aktif | Provider: PT Air Box Personalia | Unit: GH | TMT Mulai: 15/06/2023", guideStyle);
 
   const maxRow = guideLines[guideLines.length - 1]!.row;
   guideWs["!ref"] = XLSXStyle.utils.encode_range(
     { r: 0, c: 0 },
     { r: maxRow, c: 0 },
   );
-  guideWs["!cols"] = [{ wch: 80 }];
+  guideWs["!cols"] = [{ wch: 120 }];
 
   for (const line of guideLines) {
     const addr = XLSXStyle.utils.encode_cell({ r: line.row, c: 0 });

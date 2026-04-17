@@ -397,6 +397,30 @@ src/
 - Reset data SQL: `DELETE FROM activity_log; DELETE FROM import_log; DELETE FROM "user" WHERE nip != 'SUPERADMIN'; DELETE FROM employee;`
 - 135 row gagal: kemungkinan duplicate email/NIK di CSV, perlu investigasi.
 
+### Chunked Import Enhancement (2026-04-17)
+- Import now supports chunked batch processing (max 50 rows per batch) to work within Vercel 60s timeout
+- API baru: `POST /api/import/execute-batch` — processes one batch at a time, max 50 rows
+  - Request: `{ rows, batchIndex, totalBatches, importLogId?, fileName }`
+  - First batch (batchIndex=0) creates import_log, returns importLogId for subsequent batches
+  - Each batch stores insertedIds and updatedRecords (with oldData) in import_log.metadata for rollback
+  - Last batch (batchIndex === totalBatches-1) sets status to completed
+- API baru: `POST /api/import/rollback` — rolls back a completed import
+  - Deletes employees that were inserted, restores updated employees to old data
+  - Deletes auto-created auth/user accounts for inserted employees
+  - Sets import_log status to 'rolled_back'
+  - Ownership check: only the importing user or Gapura super admin can rollback
+- API update: `POST /api/import/preview` — enhanced with:
+  - Per-cell validation errors (cellErrors per row with field, value, message)
+  - Duplicate detection (duplicateNips with existing name, newNips)
+  - Column mapping detection (detectedColumns with exact/fuzzy/unmapped confidence)
+  - Returns EnhancedImportPreviewResult extending ImportPreviewResult
+- Schema update: `import_log.metadata` jsonb column added for rollback data
+  - Structure: `{ insertedIds: number[], updatedRecords: { id, oldData }[], errors: BatchError[] }`
+  - ALTER TABLE import_log ADD COLUMN metadata JSONB; (run manually on existing DB)
+- Template enhancement: PANDUAN sheet now includes column explanations, format rules, enum values, status mapping, and sample data rows
+- Hook update: `src/hooks/use-import.ts` — added useImportBatch, useImportRollback, chunkArray helper, BATCH_SIZE constant
+- Old execute API (`POST /api/import/execute`) kept for backward compatibility
+
 ### PKWT & Status Pegawai
 - `status_pegawai` 3 nilai: PEGAWAI TETAP, PKWT, TAD. PKWT bukan bagian TAD.
 - TAD hanya: PAKET SDM + PAKET PEKERJAAN.

@@ -217,6 +217,7 @@ export const importLog = pgTable("import_log", {
   error_count: integer("error_count").default(0).notNull(),
   skipped_count: integer("skipped_count").default(0).notNull(),
   error_details: jsonb("error_details"),
+  metadata: jsonb("metadata"),
   status: varchar("status", { length: 20 }).default("processing").notNull(),
   started_at: timestamp("started_at", { withTimezone: true })
     .defaultNow()

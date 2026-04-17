@@ -7,12 +7,13 @@ import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/utils/logger";
 import {
   buildImportPreview,
+  detectColumnMapping,
   normalizeRow,
   parseImportFile,
 } from "@/lib/utils/excel";
 
 import type { ApiResponse } from "@/types/api";
-import type { ImportPreviewResult } from "@/lib/utils/excel";
+import type { EnhancedImportPreviewResult } from "@/lib/utils/excel";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 const ALLOWED_EXTENSIONS = [".xlsx", ".csv"];
@@ -22,7 +23,7 @@ const ALLOWED_MIME_TYPES = new Set([
   "text/csv",
   "application/csv",
   "text/x-csv",
-  "application/octet-stream", // beberapa browser kirim octet-stream untuk .xlsx
+  "application/octet-stream",
 ]);
 
 function fail(
@@ -43,8 +44,7 @@ function hasAllowedExtension(fileName: string): boolean {
 
 export async function POST(
   request: Request,
-): Promise<NextResponse<ApiResponse<ImportPreviewResult>>> {
-  // Auth: hanya admin / super_admin yang boleh import.
+): Promise<NextResponse<ApiResponse<EnhancedImportPreviewResult>>> {
   const supabase = await createClient();
   const {
     data: { user: authUser },
@@ -72,7 +72,6 @@ export async function POST(
     );
   }
 
-  // Parse FormData.
   let formData: FormData;
   try {
     formData = await request.formData();
@@ -86,7 +85,6 @@ export async function POST(
   }
   const file = fileEntry as File;
 
-  // Validasi ekstensi & mime type.
   if (!hasAllowedExtension(file.name)) {
     return fail(
       400,
@@ -95,8 +93,6 @@ export async function POST(
     );
   }
   if (file.type && !ALLOWED_MIME_TYPES.has(file.type)) {
-    // Browser tidak selalu mengirim mime type yang akurat — log saja, jangan
-    // gagalkan jika ekstensi sudah benar.
     logger.info(`Import file dengan mime type tidak biasa: ${file.type}`);
   }
 
@@ -122,7 +118,7 @@ export async function POST(
       );
     }
 
-    // Kumpulkan NIP unik dari row yang punya nama_lengkap (calon insert/update).
+    // Collect unique NIPs to check
     const nipsToCheck = new Set<string>();
     for (const raw of parsed.rows) {
       const { data } = normalizeRow(raw);
@@ -131,23 +127,97 @@ export async function POST(
       }
     }
 
-    // Query existing NIPs dalam batch (single IN query).
-    const existingNips = new Set<string>();
+    // Query existing NIPs with names for duplicate detection
+    const existingNipMap = new Map<string, string>();
     if (nipsToCheck.size > 0) {
       const existingRows = await db
-        .select({ nip: employee.nip })
+        .select({ nip: employee.nip, nama_lengkap: employee.nama_lengkap })
         .from(employee)
         .where(inArray(employee.nip, Array.from(nipsToCheck)));
       for (const row of existingRows) {
-        existingNips.add(row.nip);
+        existingNipMap.set(row.nip, row.nama_lengkap);
       }
     }
 
+    const existingNips = new Set(existingNipMap.keys());
     const result = buildImportPreview(parsed, existingNips);
 
-    return NextResponse.json<ApiResponse<ImportPreviewResult>>({
+    // Build duplicate detection info
+    const duplicateNips: EnhancedImportPreviewResult["duplicateNips"] = [];
+    const newNips: EnhancedImportPreviewResult["newNips"] = [];
+
+    for (const row of result.rows) {
+      if (!row.data.nip || !row.data.nama_lengkap) continue;
+      if (!row.validation.isValid) continue;
+
+      if (existingNipMap.has(row.data.nip)) {
+        duplicateNips.push({
+          nip: row.data.nip,
+          namaLengkap: row.data.nama_lengkap,
+          existingName: existingNipMap.get(row.data.nip)!,
+          action: "update" as const,
+        });
+      } else {
+        newNips.push({
+          nip: row.data.nip,
+          namaLengkap: row.data.nama_lengkap,
+          action: "insert" as const,
+        });
+      }
+    }
+
+    // Build per-row enhanced data with cell errors and action
+    const enhancedRows: EnhancedImportPreviewResult["enhancedRows"] = result.rows.map((row) => {
+      const cellErrors: { field: string; value: string | null; message: string }[] = [];
+
+      // Convert validation errors to cell errors
+      for (const err of row.validation.errors) {
+        const value = row.data[err.field as keyof typeof row.data];
+        cellErrors.push({
+          field: err.field,
+          value: value != null ? String(value) : null,
+          message: err.message,
+        });
+      }
+      for (const warn of row.validation.warnings) {
+        const value = row.data[warn.field as keyof typeof row.data];
+        cellErrors.push({
+          field: warn.field,
+          value: value != null ? String(value) : null,
+          message: warn.message,
+        });
+      }
+
+      let action: "insert" | "update" | "skip" = "skip";
+      if (row.validation.isValid) {
+        action = row.isExistingNip ? "update" : "insert";
+      }
+
+      return {
+        rowIndex: row.rowNumber,
+        data: row.data,
+        isValid: row.validation.isValid,
+        cellErrors,
+        action,
+      };
+    });
+
+    // Detect column mapping
+    const detectedColumns = detectColumnMapping(parsed.headers);
+
+    const enhancedResult: EnhancedImportPreviewResult = {
+      ...result,
+      duplicateNips,
+      newNips,
+      duplicateCount: duplicateNips.length,
+      newCount: newNips.length,
+      enhancedRows,
+      detectedColumns,
+    };
+
+    return NextResponse.json<ApiResponse<EnhancedImportPreviewResult>>({
       success: true,
-      data: result,
+      data: enhancedResult,
     });
   } catch (err) {
     logger.error("Failed to preview import file", err);
