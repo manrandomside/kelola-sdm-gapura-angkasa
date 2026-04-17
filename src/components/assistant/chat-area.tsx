@@ -80,9 +80,9 @@ function MessageBubble({ message, onRetry }: MessageBubbleProps) {
         transition={{ duration: 0.2 }}
         className="flex justify-end"
       >
-        <div className="max-w-[80%]">
+        <div className="max-w-[80%] min-w-0">
           <div className="rounded-2xl rounded-br-md bg-primary px-4 py-3 text-primary-foreground">
-            <p className="whitespace-pre-wrap text-sm">{message.content}</p>
+            <p className="whitespace-pre-wrap break-words text-sm">{message.content}</p>
           </div>
           <p className="mt-1 text-right text-[11px] text-muted-foreground">
             {formatTime(message.timestamp)}
@@ -147,8 +147,8 @@ function MessageBubble({ message, onRetry }: MessageBubbleProps) {
       className="flex justify-start"
     >
       <div className="max-w-[80%]">
-        <div className="rounded-2xl rounded-bl-md border bg-white px-4 py-3">
-          <div className="prose prose-sm max-w-none whitespace-pre-wrap text-sm text-foreground">
+        <div className="min-w-0 rounded-2xl rounded-bl-md border bg-white px-4 py-3">
+          <div className="chat-content prose prose-sm max-w-none overflow-hidden whitespace-pre-wrap break-words text-sm text-foreground">
             {message.content}
           </div>
         </div>

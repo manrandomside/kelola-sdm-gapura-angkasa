@@ -12,6 +12,7 @@ import {
 } from "recharts";
 
 import type { ChartDataPoint } from "@/hooks/use-dashboard";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface BarChartCardProps {
   title: string;
@@ -52,6 +53,11 @@ function CustomTooltip({
   );
 }
 
+function truncateLabel(value: string, maxLen: number): string {
+  if (value.length <= maxLen) return value;
+  return value.substring(0, maxLen - 1) + "...";
+}
+
 export function BarChartCard({
   title,
   description,
@@ -62,6 +68,8 @@ export function BarChartCard({
   height = 320,
 }: BarChartCardProps) {
   const total = data.reduce((acc, d) => acc + d.value, 0);
+  const isMobile = useIsMobile();
+  const effectiveHeight = isMobile ? Math.min(height, 260) : height;
 
   return (
     <div className="glass-card-subtle rounded-2xl p-5">
@@ -75,7 +83,7 @@ export function BarChartCard({
           Belum ada data
         </div>
       ) : (
-        <div className="mt-4 w-full" style={{ height }}>
+        <div className="mt-4 w-full" style={{ height: effectiveHeight }}>
           <ResponsiveContainer width="100%" height="100%">
             {layout === "vertical" ? (
               <BarChart
@@ -90,15 +98,16 @@ export function BarChartCard({
                 />
                 <XAxis
                   type="number"
-                  tick={{ fontSize: 11, fill: "#6B7280" }}
+                  tick={{ fontSize: isMobile ? 9 : 11, fill: "#6B7280" }}
                   tickFormatter={(v: number) => v.toLocaleString("id-ID")}
                 />
                 <YAxis
                   type="category"
                   dataKey="name"
-                  tick={{ fontSize: 11, fill: "#374151" }}
-                  width={140}
+                  tick={{ fontSize: isMobile ? 8 : 11, fill: "#374151" }}
+                  width={isMobile ? 70 : 140}
                   interval={0}
+                  tickFormatter={(v: string) => isMobile ? truncateLabel(v, 10) : v}
                 />
                 <Tooltip
                   content={<CustomTooltip />}
@@ -120,7 +129,7 @@ export function BarChartCard({
             ) : (
               <BarChart
                 data={data}
-                margin={{ top: 4, right: 8, left: 0, bottom: 4 }}
+                margin={{ top: 4, right: 8, left: isMobile ? -12 : 0, bottom: 4 }}
               >
                 <CartesianGrid
                   vertical={false}
@@ -129,12 +138,14 @@ export function BarChartCard({
                 />
                 <XAxis
                   dataKey="name"
-                  tick={{ fontSize: 11, fill: "#374151" }}
+                  tick={{ fontSize: isMobile ? 9 : 11, fill: "#374151" }}
                   interval={0}
+                  tickFormatter={(v: string) => isMobile ? truncateLabel(v, 8) : v}
                 />
                 <YAxis
-                  tick={{ fontSize: 11, fill: "#6B7280" }}
+                  tick={{ fontSize: isMobile ? 9 : 11, fill: "#6B7280" }}
                   tickFormatter={(v: number) => v.toLocaleString("id-ID")}
+                  width={isMobile ? 30 : 40}
                 />
                 <Tooltip
                   content={<CustomTooltip />}
@@ -145,7 +156,7 @@ export function BarChartCard({
                   dataKey="value"
                   fill={colors ? undefined : color}
                   radius={[6, 6, 0, 0]}
-                  maxBarSize={40}
+                  maxBarSize={isMobile ? 30 : 40}
                   isAnimationActive={false}
                 >
                   {colors && data.map((_entry, index) => (

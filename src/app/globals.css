@@ -143,3 +143,27 @@
   -webkit-backdrop-filter: blur(16px);
   border-right: 1px solid rgba(255, 255, 255, 0.3);
 }
+
+/* Prevent horizontal overflow globally */
+html,
+body {
+  overflow-x: hidden;
+}
+
+/* Chat content overflow handling */
+.chat-content pre,
+.chat-content code {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.chat-content table {
+  display: block;
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.chat-content img {
+  max-width: 100%;
+  height: auto;
+}

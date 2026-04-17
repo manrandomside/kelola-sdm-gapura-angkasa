@@ -12,6 +12,7 @@ import {
 } from "recharts";
 
 import type { PositionGroupPoint } from "@/hooks/use-dashboard";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface PositionGroupChartProps {
   data: PositionGroupPoint[];
@@ -57,8 +58,23 @@ const POSITION_COLORS: Record<string, string> = {
 
 const DEFAULT_COLOR = "#6366F1";
 
+const SHORT_LABELS: Record<string, string> = {
+  "ACCOUNT EXECUTIVE / AE": "AE",
+  "GENERAL MANAGER": "GM",
+  "EXECUTIVE GENERAL MANAGER": "EGM",
+};
+
+function truncateLabel(value: string, maxLen: number): string {
+  const short = SHORT_LABELS[value];
+  if (short) return short;
+  if (value.length <= maxLen) return value;
+  return value.substring(0, maxLen - 1) + "...";
+}
+
 export function PositionGroupChart({ data }: PositionGroupChartProps) {
   const total = data.reduce((acc, d) => acc + d.count, 0);
+  const isMobile = useIsMobile();
+  const barHeight = isMobile ? 36 : 44;
 
   return (
     <div className="glass-card-subtle rounded-2xl p-5">
@@ -74,12 +90,12 @@ export function PositionGroupChart({ data }: PositionGroupChartProps) {
           Belum ada data
         </div>
       ) : (
-        <div className="mt-4 w-full" style={{ height: Math.max(240, data.length * 44) }}>
+        <div className="mt-4 w-full" style={{ height: Math.max(isMobile ? 200 : 240, data.length * barHeight) }}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               data={data}
               layout="vertical"
-              margin={{ top: 4, right: 16, left: 0, bottom: 4 }}
+              margin={{ top: 4, right: isMobile ? 8 : 16, left: 0, bottom: 4 }}
             >
               <CartesianGrid
                 horizontal={false}
@@ -88,15 +104,16 @@ export function PositionGroupChart({ data }: PositionGroupChartProps) {
               />
               <XAxis
                 type="number"
-                tick={{ fontSize: 11, fill: "#6B7280" }}
+                tick={{ fontSize: isMobile ? 9 : 11, fill: "#6B7280" }}
                 tickFormatter={(v: number) => v.toLocaleString("id-ID")}
               />
               <YAxis
                 type="category"
                 dataKey="label"
-                tick={{ fontSize: 11, fill: "#374151" }}
-                width={170}
+                tick={{ fontSize: isMobile ? 8 : 11, fill: "#374151" }}
+                width={isMobile ? 80 : 170}
                 interval={0}
+                tickFormatter={(v: string) => isMobile ? truncateLabel(v, 10) : v}
               />
               <Tooltip
                 content={<CustomTooltip />}
@@ -107,7 +124,7 @@ export function PositionGroupChart({ data }: PositionGroupChartProps) {
                 dataKey="count"
                 radius={[0, 6, 6, 0]}
                 maxBarSize={24}
-                label={{ position: "right", fontSize: 11, fill: "#6B7280" }}
+                label={{ position: "right", fontSize: isMobile ? 9 : 11, fill: "#6B7280" }}
                 isAnimationActive={false}
               >
                 {data.map((entry, index) => (

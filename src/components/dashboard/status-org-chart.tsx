@@ -12,6 +12,7 @@ import {
 } from "recharts";
 
 import type { StatusPerOrgPoint } from "@/hooks/use-dashboard";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface StatusOrgChartProps {
   data: StatusPerOrgPoint[];
@@ -62,6 +63,7 @@ export function StatusOrgChart({ data }: StatusOrgChartProps) {
     (acc, d) => acc + d.pegawaiTetap + d.pkwt + d.tad,
     0,
   );
+  const isMobile = useIsMobile();
 
   return (
     <div className="glass-card-subtle rounded-2xl p-5">
@@ -78,11 +80,11 @@ export function StatusOrgChart({ data }: StatusOrgChartProps) {
           Belum ada data
         </div>
       ) : (
-        <div className="mt-4 h-80 w-full">
+        <div className="mt-4 w-full" style={{ height: isMobile ? 260 : 320 }}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               data={data}
-              margin={{ top: 16, right: 8, left: 0, bottom: 4 }}
+              margin={{ top: 16, right: 8, left: isMobile ? -12 : 0, bottom: 4 }}
             >
               <CartesianGrid
                 vertical={false}
@@ -91,18 +93,22 @@ export function StatusOrgChart({ data }: StatusOrgChartProps) {
               />
               <XAxis
                 dataKey="kode"
-                tick={{ fontSize: 11, fill: "#374151" }}
+                tick={{ fontSize: isMobile ? 8 : 11, fill: "#374151" }}
                 interval={0}
+                angle={isMobile ? -45 : 0}
+                textAnchor={isMobile ? "end" : "middle"}
+                height={isMobile ? 40 : 30}
               />
               <YAxis
-                tick={{ fontSize: 11, fill: "#6B7280" }}
+                tick={{ fontSize: isMobile ? 9 : 11, fill: "#6B7280" }}
                 tickFormatter={(v: number) => v.toLocaleString("id-ID")}
+                width={isMobile ? 30 : 40}
               />
               <Tooltip content={<CustomTooltip />} cursor={{ fill: "#F3F4F6" }} isAnimationActive={false} />
               <Legend
-                wrapperStyle={{ fontSize: 12 }}
+                wrapperStyle={{ fontSize: isMobile ? 10 : 12 }}
                 iconType="circle"
-                iconSize={10}
+                iconSize={isMobile ? 8 : 10}
               />
               <Bar
                 dataKey="pegawaiTetap"
@@ -110,7 +116,7 @@ export function StatusOrgChart({ data }: StatusOrgChartProps) {
                 stackId="status"
                 fill="#3B82F6"
                 radius={[0, 0, 0, 0]}
-                maxBarSize={48}
+                maxBarSize={isMobile ? 28 : 48}
                 isAnimationActive={false}
               />
               <Bar
@@ -119,7 +125,7 @@ export function StatusOrgChart({ data }: StatusOrgChartProps) {
                 stackId="status"
                 fill="#8B5CF6"
                 radius={[0, 0, 0, 0]}
-                maxBarSize={48}
+                maxBarSize={isMobile ? 28 : 48}
                 isAnimationActive={false}
               />
               <Bar
@@ -128,7 +134,7 @@ export function StatusOrgChart({ data }: StatusOrgChartProps) {
                 stackId="status"
                 fill="#F97316"
                 radius={[4, 4, 0, 0]}
-                maxBarSize={48}
+                maxBarSize={isMobile ? 28 : 48}
                 isAnimationActive={false}
               />
             </BarChart>

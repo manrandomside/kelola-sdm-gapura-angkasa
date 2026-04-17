@@ -81,21 +81,21 @@ export function StatCard({
         <Icon className={cn("size-6", compact && "size-5")} />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="flex items-center gap-1 truncate text-xs font-medium text-muted-foreground">
-          {title}
+        <p className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground sm:text-xs">
+          <span className="truncate">{title}</span>
           {titleSuffix}
         </p>
         <p
           className={cn(
-            "mt-0.5 text-2xl font-bold tabular-nums",
+            "mt-0.5 text-xl font-bold tabular-nums sm:text-2xl",
             COLOR_TEXT[color],
-            compact && "text-xl",
+            compact && "text-lg sm:text-xl",
           )}
         >
           {value.toLocaleString("id-ID")}
         </p>
         {description && (
-          <p className="mt-0.5 truncate text-xs text-muted-foreground">
+          <p className="mt-0.5 text-[10px] leading-tight text-muted-foreground sm:text-xs">
             {description}
           </p>
         )}

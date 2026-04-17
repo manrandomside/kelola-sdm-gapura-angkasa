@@ -12,6 +12,7 @@ import {
 } from "recharts";
 
 import type { ChartDataPoint } from "@/hooks/use-dashboard";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface StatusKontrakChartProps {
   data: ChartDataPoint[];
@@ -22,6 +23,13 @@ const COLOR_MAP: Record<string, string> = {
   PKWT: "#8B5CF6",
   "PAKET SDM": "#F59E0B",
   "PAKET PEKERJAAN": "#EC4899",
+};
+
+const SHORT_LABELS: Record<string, string> = {
+  "PEGAWAI TETAP": "PG. TETAP",
+  PKWT: "PKWT",
+  "PAKET SDM": "PKT SDM",
+  "PAKET PEKERJAAN": "PKT PKJ",
 };
 
 const FALLBACK_COLOR = "#94A3B8";
@@ -71,7 +79,7 @@ function CustomLabel({ x = 0, y = 0, width = 0, value = 0 }: CustomLabelProps) {
       x={x + width / 2}
       y={y - 8}
       textAnchor="middle"
-      className="fill-foreground text-xs font-semibold"
+      className="fill-foreground text-[10px] font-semibold sm:text-xs"
     >
       {value.toLocaleString("id-ID")}
     </text>
@@ -80,6 +88,7 @@ function CustomLabel({ x = 0, y = 0, width = 0, value = 0 }: CustomLabelProps) {
 
 export function StatusKontrakChart({ data }: StatusKontrakChartProps) {
   const total = data.reduce((acc, d) => acc + d.value, 0);
+  const isMobile = useIsMobile();
 
   return (
     <div className="glass-card-subtle rounded-2xl p-5">
@@ -96,31 +105,33 @@ export function StatusKontrakChart({ data }: StatusKontrakChartProps) {
         </div>
       ) : (
         <>
-          <div className="mt-4 h-64 w-full">
+          <div className="mt-4 w-full" style={{ height: isMobile ? 220 : 256 }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={data}
-                margin={{ top: 24, right: 8, left: 8, bottom: 8 }}
+                margin={{ top: 24, right: 8, left: isMobile ? -12 : 8, bottom: 8 }}
               >
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis
                   dataKey="name"
-                  tick={{ fontSize: 11 }}
+                  tick={{ fontSize: isMobile ? 9 : 11 }}
                   tickLine={false}
                   axisLine={false}
                   interval={0}
+                  tickFormatter={(v: string) => (isMobile ? (SHORT_LABELS[v] ?? v) : v)}
                 />
                 <YAxis
-                  tick={{ fontSize: 11 }}
+                  tick={{ fontSize: isMobile ? 9 : 11 }}
                   tickLine={false}
                   axisLine={false}
                   allowDecimals={false}
+                  width={isMobile ? 30 : 40}
                 />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(0,0,0,0.04)" }} isAnimationActive={false} />
                 <Bar
                   dataKey="value"
                   radius={[6, 6, 0, 0]}
-                  maxBarSize={56}
+                  maxBarSize={isMobile ? 40 : 56}
                   label={<CustomLabel />}
                   isAnimationActive={false}
                 >
@@ -133,11 +144,11 @@ export function StatusKontrakChart({ data }: StatusKontrakChartProps) {
           </div>
 
           {/* Legend */}
-          <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className="mt-4 grid grid-cols-2 gap-2">
             {data.map((entry) => (
               <div
                 key={entry.name}
-                className="flex items-center gap-2 text-xs"
+                className="flex items-center gap-2 text-[11px] sm:text-xs"
               >
                 <span
                   className="size-3 shrink-0 rounded-full"

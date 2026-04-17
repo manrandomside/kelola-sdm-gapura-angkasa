@@ -56,8 +56,8 @@ function MiniStatCard({ label, value, tone, onClick }: MiniStatProps) {
       tabIndex={onClick ? 0 : undefined}
       onKeyDown={onClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } } : undefined}
     >
-      <p className="text-xs font-medium text-muted-foreground">{label}</p>
-      <p className={cn("mt-1 text-2xl font-bold tabular-nums", VALUE_TONE[tone])}>
+      <p className="text-[11px] font-medium text-muted-foreground sm:text-xs">{label}</p>
+      <p className={cn("mt-1 text-xl font-bold tabular-nums sm:text-2xl", VALUE_TONE[tone])}>
         {value.toLocaleString("id-ID")}
       </p>
     </div>

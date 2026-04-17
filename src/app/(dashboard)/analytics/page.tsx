@@ -20,6 +20,7 @@ import {
 
 import { EmptyState } from "@/components/shared/empty-state";
 import { useAnalytics } from "@/hooks/use-analytics";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
 // ============================================================================
@@ -38,8 +39,8 @@ function ComparisonCard({ label, value, diff }: ComparisonCardProps) {
 
   return (
     <div className="glass-card flex flex-col gap-1 rounded-2xl p-4 sm:p-5">
-      <p className="text-xs font-medium text-muted-foreground">{label}</p>
-      <p className="text-2xl font-bold tabular-nums text-foreground">
+      <p className="text-[11px] font-medium text-muted-foreground sm:text-xs">{label}</p>
+      <p className="text-xl font-bold tabular-nums text-foreground sm:text-2xl">
         {value.toLocaleString("id-ID")}
       </p>
       <div className="flex items-center gap-1 text-xs">
@@ -166,6 +167,7 @@ function TurnoverBadge({ rate }: { rate: number }) {
 
 export default function AnalyticsPage() {
   const { data, isLoading } = useAnalytics();
+  const isMobile = useIsMobile();
 
   const tren = data?.trenBulanan ?? [];
   const perbandingan = data?.perbandingan;
@@ -238,10 +240,10 @@ export default function AnalyticsPage() {
         ) : (
           <div className="glass-card-subtle rounded-2xl p-5">
             {hasTrenData ? (
-              <ResponsiveContainer width="100%" height={350}>
+              <ResponsiveContainer width="100%" height={isMobile ? 260 : 350}>
                 <ComposedChart
                   data={tren}
-                  margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
+                  margin={{ top: 5, right: isMobile ? 8 : 20, left: isMobile ? -12 : 0, bottom: 5 }}
                 >
                   <defs>
                     <linearGradient id="fillMasuk" x1="0" y1="0" x2="0" y2="1">
@@ -256,20 +258,21 @@ export default function AnalyticsPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                   <XAxis
                     dataKey="shortLabel"
-                    tick={{ fontSize: 11, fill: "#6B7280" }}
+                    tick={{ fontSize: isMobile ? 9 : 11, fill: "#6B7280" }}
                     axisLine={{ stroke: "#E5E7EB" }}
                     tickLine={false}
                   />
                   <YAxis
-                    tick={{ fontSize: 11, fill: "#6B7280" }}
+                    tick={{ fontSize: isMobile ? 9 : 11, fill: "#6B7280" }}
                     axisLine={false}
                     tickLine={false}
                     allowDecimals={false}
+                    width={isMobile ? 30 : 40}
                   />
                   <Tooltip content={<ChartTooltip />} isAnimationActive={false} />
                   <Legend
                     iconType="circle"
-                    wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
+                    wrapperStyle={{ fontSize: isMobile ? 10 : 12, paddingTop: 8 }}
                   />
                   <Area
                     type="monotone"

@@ -3,6 +3,7 @@
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 
 import type { GenderDataPoint } from "@/hooks/use-dashboard";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface GenderChartProps {
   data: GenderDataPoint[];
@@ -44,6 +45,7 @@ function CustomTooltip({
 
 export function GenderChart({ data }: GenderChartProps) {
   const total = data.reduce((acc, d) => acc + d.count, 0);
+  const isMobile = useIsMobile();
 
   return (
     <div className="glass-card-subtle rounded-2xl p-5">
@@ -58,7 +60,7 @@ export function GenderChart({ data }: GenderChartProps) {
         </div>
       ) : (
         <>
-          <div className="mt-4 h-64 w-full">
+          <div className="mt-4 w-full" style={{ height: isMobile ? 200 : 256 }}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -67,8 +69,8 @@ export function GenderChart({ data }: GenderChartProps) {
                   nameKey="label"
                   cx="50%"
                   cy="50%"
-                  innerRadius={60}
-                  outerRadius={95}
+                  innerRadius={isMobile ? 40 : 60}
+                  outerRadius={isMobile ? 70 : 95}
                   paddingAngle={2}
                   stroke="#ffffff"
                   strokeWidth={2}
@@ -91,7 +93,7 @@ export function GenderChart({ data }: GenderChartProps) {
             {data.map((entry) => (
               <div
                 key={entry.value}
-                className="flex items-center gap-2 text-xs"
+                className="flex items-center gap-2 text-[11px] sm:text-xs"
               >
                 <span
                   className="size-3 shrink-0 rounded-full"

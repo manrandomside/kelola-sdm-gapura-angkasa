@@ -82,7 +82,7 @@ function ReportCard({
         <h3 className="text-base font-semibold text-foreground">{title}</h3>
         <p className="mt-1 text-sm text-muted-foreground">{description}</p>
       </div>
-      <div className="flex flex-wrap items-end gap-3">
+      <div className="flex flex-col items-start gap-3 sm:flex-row sm:flex-wrap sm:items-end">
         {children}
         <Button
           onClick={onGenerate}
@@ -257,7 +257,7 @@ export default function ReportsPage() {
             onValueChange={(v) => { if (v) setProviderName(v); }}
             disabled={isProviderScoped}
           >
-            <SelectTrigger className="h-9 w-[280px]">
+            <SelectTrigger className="h-9 w-full sm:w-[280px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

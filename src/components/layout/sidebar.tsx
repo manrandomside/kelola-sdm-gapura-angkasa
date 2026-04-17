@@ -21,7 +21,6 @@ import {
   TableProperties,
   TrendingUp,
   Upload,
-  User,
   UserPlus,
   Users,
   type LucideIcon,
@@ -410,17 +409,6 @@ export function Sidebar({
 
               {/* Menu items */}
               <div className="p-1">
-                <button
-                  type="button"
-                  disabled
-                  className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground cursor-not-allowed"
-                >
-                  <User className="size-4" />
-                  Profil Saya
-                  <span className="ml-auto rounded bg-muted px-1.5 py-0.5 text-[10px]">
-                    Segera
-                  </span>
-                </button>
                 <button
                   type="button"
                   onClick={() =>

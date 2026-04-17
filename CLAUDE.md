@@ -513,6 +513,22 @@ src/
 - Ctrl+K / Cmd+K: focus global search
 - Escape: close search dropdown
 
+### Comprehensive Responsive Fix (2026-04-17)
+- `useIsMobile` hook: `src/hooks/use-mobile.ts` — window.innerWidth < 768px with resize listener
+- All 6 dashboard chart components updated with `useIsMobile`:
+  - `status-kontrak-chart.tsx`: SHORT_LABELS mapping, responsive font sizes (9px mobile, 11px desktop), responsive height/margins/bar sizes
+  - `age-chart.tsx`: responsive font sizes, height (240px vs 288px)
+  - `bar-chart-card.tsx`: `truncateLabel` helper, responsive YAxis width (70px mobile vs 140px vertical), effectiveHeight capped at 260 mobile
+  - `gender-chart.tsx`: responsive innerRadius (40/60), outerRadius (70/95), chart height (200/256)
+  - `position-group-chart.tsx`: SHORT_LABELS for long names (AE, GM, EGM), YAxis width (80/170), font sizes
+  - `status-org-chart.tsx`: rotated XAxis labels on mobile (-45deg), responsive height (260/320), YAxis width, legend sizing
+- Stat cards: responsive text sizes — title `text-[11px] sm:text-xs`, value `text-xl sm:text-2xl`, description `text-[10px] sm:text-xs`
+- Employee page MiniStatCard: responsive text sizes matching stat cards
+- Analytics page: responsive chart height (260/350), comparison card text sizes, legend/axis font sizes
+- Reports page: responsive form layout (flex-col on mobile, flex-row on desktop), provider select full-width on mobile
+- AI Assistant: `min-w-0 overflow-hidden` on chat container, `break-words` on message bubbles, `.chat-content` CSS for pre/code/table overflow
+- Global CSS: `overflow-x: hidden` on html/body, `.chat-content` styles for code blocks and tables
+
 ### Known Issues
 - Vercel Hobby timeout 60s: import bulk harus via localhost
 - Button warning di console (nativeButton prop): non-blocking, shadcn/ui Base UI migration
