@@ -9,6 +9,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 
+import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useSidebarStore } from "@/stores/sidebar-store";
 
@@ -22,6 +23,7 @@ interface AppShellProps {
 export function AppShell({ children }: AppShellProps) {
   const isMobileOpen = useSidebarStore((s) => s.isMobileOpen);
   const setOpen = useSidebarStore((s) => s.setOpen);
+  const isCollapsed = useSidebarStore((s) => s.isCollapsed);
 
   const { user, isLoading, logout, isLoggingOut } = useAuth();
 
@@ -40,10 +42,16 @@ export function AppShell({ children }: AppShellProps) {
   return (
     <div className="min-h-screen bg-background">
       {/* Desktop sidebar — fixed, always visible at lg+ */}
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 lg:block">
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-40 hidden transition-all duration-300 lg:block",
+          isCollapsed ? "w-16" : "w-64",
+        )}
+      >
         <Sidebar
           role={user.role}
           userName={user.full_name}
+          nip={user.nip}
           provider={user.provider}
           onLogout={handleLogout}
           isLoggingOut={isLoggingOut}
@@ -59,15 +67,22 @@ export function AppShell({ children }: AppShellProps) {
           <Sidebar
             role={user.role}
             userName={user.full_name}
+            nip={user.nip}
             provider={user.provider}
             onLogout={handleLogout}
             isLoggingOut={isLoggingOut}
+            isMobileDrawer
           />
         </SheetContent>
       </Sheet>
 
       {/* Main column */}
-      <div className="flex min-h-screen flex-col lg:pl-64">
+      <div
+        className={cn(
+          "flex min-h-screen flex-col transition-all duration-300",
+          isCollapsed ? "lg:pl-16" : "lg:pl-64",
+        )}
+      >
         <TopBar />
         <main className="flex-1 px-4 py-6 sm:px-6 sm:py-8">{children}</main>
       </div>

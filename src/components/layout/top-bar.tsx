@@ -2,11 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronRight, Home, Menu } from "lucide-react";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { ChevronRight, Home, Menu, Search } from "lucide-react";
 
 import { ROUTES } from "@/lib/constants/routes";
-
+import { cn } from "@/lib/utils";
+import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { useSidebarStore } from "@/stores/sidebar-store";
+
+import { GlobalSearch } from "./global-search";
 
 // Static label lookup. Dynamic IDs (e.g. /employees/[id]) get a generic label.
 const ROUTE_LABELS: Record<string, string> = {
@@ -17,6 +21,7 @@ const ROUTE_LABELS: Record<string, string> = {
   "/import/logs": "Riwayat Import",
   [ROUTES.USERS]: "Management User",
   [ROUTES.ACTIVITY_LOGS]: "Activity Log",
+  [ROUTES.CHANGE_PASSWORD]: "Ubah Password",
 };
 
 interface Crumb {
@@ -37,8 +42,9 @@ function buildCrumbs(pathname: string): Crumb[] {
 
     let label = ROUTE_LABELS[acc];
     if (!label) {
-      // Dynamic segment fallback (e.g. employee id, edit, etc.)
       if (segment === "edit") label = "Edit";
+      else if (segment === "settings") label = "Pengaturan";
+      else if (segment === "password") label = "Ubah Password";
       else if (/^\d+$/.test(segment)) label = "Detail";
       else label = segment.replace(/-/g, " ");
     }
@@ -54,6 +60,24 @@ export function TopBar() {
 
   const crumbs = buildCrumbs(pathname);
 
+  const searchRef = useRef<HTMLInputElement>(null);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+
+  const shortcuts = useMemo(
+    () => [
+      {
+        key: "k",
+        ctrl: true,
+        handler: () => {
+          searchRef.current?.focus();
+          setMobileSearchOpen(true);
+        },
+      },
+    ],
+    [],
+  );
+  useKeyboardShortcuts(shortcuts);
+
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-card px-4 sm:px-6">
       <button
@@ -65,7 +89,11 @@ export function TopBar() {
         <Menu className="h-5 w-5" aria-hidden="true" />
       </button>
 
-      <nav aria-label="Breadcrumb" className="min-w-0 flex-1">
+      {/* Breadcrumb — hidden when mobile search is open */}
+      <nav
+        aria-label="Breadcrumb"
+        className={cn("min-w-0 flex-1", mobileSearchOpen && "hidden sm:block")}
+      >
         <ol className="flex items-center gap-1.5 text-sm">
           <li className="flex items-center">
             <Link
@@ -101,6 +129,41 @@ export function TopBar() {
           ))}
         </ol>
       </nav>
+
+      {/* Desktop search — always visible at sm+ */}
+      <div className="hidden sm:block">
+        <GlobalSearch ref={searchRef} />
+      </div>
+
+      {/* Mobile search toggle */}
+      {!mobileSearchOpen && (
+        <button
+          type="button"
+          onClick={() => {
+            setMobileSearchOpen(true);
+            // Focus after the input renders.
+            setTimeout(() => searchRef.current?.focus(), 50);
+          }}
+          className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground sm:hidden"
+          aria-label="Buka pencarian"
+        >
+          <Search className="h-5 w-5" />
+        </button>
+      )}
+
+      {/* Mobile search — replaces breadcrumb */}
+      {mobileSearchOpen && (
+        <div className="flex flex-1 items-center gap-2 sm:hidden">
+          <GlobalSearch ref={searchRef} />
+          <button
+            type="button"
+            onClick={() => setMobileSearchOpen(false)}
+            className="shrink-0 text-sm font-medium text-muted-foreground"
+          >
+            Batal
+          </button>
+        </div>
+      )}
     </header>
   );
 }

@@ -479,8 +479,39 @@ src/
 - API: `POST /api/auth/change-password` — validates current password via signInWithPassword, updates via admin.updateUserById, logs activity
 - Page: `/settings/password` — react-hook-form + zod validation, show/hide toggle, min 6 chars, confirm match
 - Hook: `src/hooks/use-change-password.ts` — useMutation with toast feedback
-- Sidebar: "Ubah Password" link with Key icon in footer section, all roles can access
 - Route: `ROUTES.CHANGE_PASSWORD = "/settings/password"`
+
+### User Profile Dropdown (2026-04-17)
+- Sidebar footer replaced: separate "Ubah Password" link + "Keluar" button → unified Popover dropdown
+- Popover opens upward (side="top") from avatar area at bottom of sidebar
+- Shows: full name, NIP, role, provider, "Profil Saya" (disabled, badge "Segera"), "Ubah Password", "Keluar"
+- Avatar: green circle with 2-letter initials from user name
+- Works in both desktop sidebar and mobile drawer
+
+### Sidebar Collapse (2026-04-17)
+- Desktop-only collapse: toggle button (PanelLeftClose/PanelLeftOpen) in sidebar header
+- Collapsed width: 64px (w-16), expanded: 256px (w-64)
+- Collapsed mode: icon-only menu items with Tooltip on hover (side="right")
+- Collapsed groups: click icon navigates to first child page
+- Collapsed logo: small 32x32 logo without text
+- Collapsed profile: avatar-only, click still opens full popover
+- State persisted to localStorage via Zustand persist middleware (key: "sidebar-collapsed")
+- Smooth transition: `transition-all duration-300` on sidebar and main content
+- Mobile/tablet drawer unaffected — always expanded, `isMobileDrawer` prop
+
+### Global Search (2026-04-17)
+- Search box in TopBar: desktop always visible (320px), mobile icon toggle
+- Hook: `src/hooks/use-global-search.ts` — debounced 300ms, calls GET /api/employees?search&limit=5
+- Component: `src/components/layout/global-search.tsx` — dropdown with results, keyboard navigation
+- Features: arrow up/down navigation, Enter to select, Escape to close, click outside to close
+- Results show: avatar initials, name, NIP, unit organisasi
+- "Lihat semua X hasil" link → navigates to /employees?search=query
+- Keyboard shortcut: Ctrl+K (or Cmd+K) focuses search input
+
+### Keyboard Shortcuts (2026-04-17)
+- Hook: `src/hooks/use-keyboard-shortcuts.ts` — generic keyboard shortcut handler
+- Ctrl+K / Cmd+K: focus global search
+- Escape: close search dropdown
 
 ### Known Issues
 - Vercel Hobby timeout 60s: import bulk harus via localhost
