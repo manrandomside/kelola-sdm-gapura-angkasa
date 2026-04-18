@@ -619,17 +619,38 @@ export default function ImportPage() {
               fileName: file.name,
             }),
           });
-          const json = (await res.json()) as ApiResponse<BatchExecuteResult>;
+
+          const contentType = res.headers.get("content-type") ?? "";
+          if (!contentType.includes("application/json")) {
+            throw new Error(
+              "Server timeout. Batch terlalu besar atau koneksi lambat. Coba lagi.",
+            );
+          }
+
+          let json: ApiResponse<BatchExecuteResult>;
+          try {
+            json = (await res.json()) as ApiResponse<BatchExecuteResult>;
+          } catch {
+            throw new Error(
+              "Server timeout. Batch terlalu besar atau koneksi lambat. Coba lagi.",
+            );
+          }
+
           if (!json.success) throw new Error(json.error.message);
           result = json.data;
           break;
         } catch (err) {
-          if (attempt === 1) {
+          const errorMsg =
+            err instanceof Error ? err.message : "Kesalahan tidak diketahui";
+          const isTimeout = /timeout/i.test(errorMsg);
+
+          if (attempt === 0 && isTimeout) {
+            await new Promise((resolve) => setTimeout(resolve, 3000));
+            continue;
+          }
+
+          if (attempt === 1 || !isTimeout) {
             const duration = Date.now() - startTime;
-            const errorMsg =
-              err instanceof Error
-                ? err.message
-                : "Kesalahan tidak diketahui";
             const batchSize = chunks[i]!.length;
             accErrors += batchSize;
             setBatchLogs((prev) =>
@@ -646,6 +667,7 @@ export default function ImportPage() {
               ),
             );
             setTotalErrors(accErrors);
+            break;
           }
         }
       }

@@ -15,7 +15,7 @@ import type { NormalizedRow } from "@/lib/utils/excel";
 export const maxDuration = 30;
 export const dynamic = "force-dynamic";
 
-const MAX_BATCH_SIZE = 50;
+const MAX_BATCH_SIZE = 10;
 
 interface ExecuteBatchRow {
   rowNumber: number;

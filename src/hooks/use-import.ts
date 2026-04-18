@@ -14,7 +14,7 @@ import type {
 // Constants & Helpers
 // ============================================================================
 
-export const BATCH_SIZE = 50;
+export const BATCH_SIZE = 10;
 
 export function chunkArray<T>(array: T[], size: number): T[][] {
   const chunks: T[][] = [];
@@ -163,7 +163,7 @@ export function useImportExecute() {
 
 // ============================================================================
 // useImportBatch — mutation untuk POST /api/import/execute-batch.
-// Processes one batch at a time, max 50 rows per batch.
+// Processes one batch at a time, max 10 rows per batch.
 // ============================================================================
 
 export interface BatchExecuteRow {
@@ -209,7 +209,22 @@ async function executeBatch(
     body: JSON.stringify(payload),
   });
 
-  const json = (await res.json()) as ApiResponse<BatchExecuteResult>;
+  const contentType = res.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/json")) {
+    throw new Error(
+      "Server timeout. Batch terlalu besar atau koneksi lambat. Coba lagi.",
+    );
+  }
+
+  let json: ApiResponse<BatchExecuteResult>;
+  try {
+    json = (await res.json()) as ApiResponse<BatchExecuteResult>;
+  } catch {
+    throw new Error(
+      "Server timeout. Batch terlalu besar atau koneksi lambat. Coba lagi.",
+    );
+  }
+
   if (!json.success) {
     throw new Error(json.error.message);
   }
