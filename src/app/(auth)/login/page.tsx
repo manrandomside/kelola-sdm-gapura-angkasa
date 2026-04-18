@@ -48,14 +48,16 @@ function BrandingPanel() {
       />
 
       <div className="relative z-10 max-w-md">
-        <Image
-          src="/images/gapuraangkasa.jpg"
-          alt="Gapura Angkasa"
-          width={280}
-          height={80}
-          priority
-          className="h-16 w-auto object-contain brightness-0 invert"
-        />
+        <div className="inline-flex items-center justify-center rounded-xl bg-white px-4 py-3 shadow-lg ring-1 ring-black/5">
+          <Image
+            src="/images/gapuraangkasa.jpg"
+            alt="Gapura Angkasa"
+            width={240}
+            height={72}
+            priority
+            className="h-12 w-auto object-contain"
+          />
+        </div>
 
         <h1 className="mt-8 text-3xl font-bold leading-tight text-white xl:text-4xl">
           Kelola SDM

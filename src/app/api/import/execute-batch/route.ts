@@ -192,39 +192,159 @@ export async function POST(
   }
 
   let importLogId: string;
+  // Tracks whether the runtime DB has the metadata column. If missing AND
+  // we cannot auto-add it (no DDL privilege), we skip metadata updates
+  // gracefully so the import itself still succeeds (rollback tidak tersedia).
+  let metadataSupported = true;
 
   // First batch: create import_log
   if (body.batchIndex === 0) {
+    // Self-healing preflight: ensure metadata column exists on import_log.
+    // Production DB pada environment lama mungkin belum punya kolom ini karena
+    // dulu di-ALTER manual (lihat CLAUDE.md). IF NOT EXISTS bersifat idempotent.
+    // Jika ALTER gagal (mis. tidak ada hak DDL), lanjutkan tanpa metadata.
     try {
-      const inserted = await db
-        .insert(importLog)
-        .values({
-          user_id: appUser.id,
-          file_name: body.fileName,
-          total_rows: 0,
-          success_count: 0,
-          error_count: 0,
-          skipped_count: 0,
-          status: "processing",
-          started_at: new Date(),
-          metadata: { insertedIds: [], updatedRecords: [], errors: [] },
-        })
-        .returning({ id: importLog.id });
+      await db.execute(
+        sql`ALTER TABLE import_log ADD COLUMN IF NOT EXISTS metadata jsonb`,
+      );
+    } catch (err) {
+      console.error(
+        "[Import] ALTER TABLE import_log ADD COLUMN metadata failed (continuing without metadata):",
+        err,
+      );
+      metadataSupported = false;
+    }
+
+    const baseInsertValues = {
+      user_id: appUser.id,
+      file_name: body.fileName,
+      total_rows: 0,
+      success_count: 0,
+      error_count: 0,
+      skipped_count: 0,
+      status: "processing",
+      started_at: new Date(),
+    } as const;
+
+    const insertDebugContext = {
+      userId: appUser.id,
+      fileName: body.fileName,
+      batchIndex: body.batchIndex,
+      totalBatches: body.totalBatches,
+      metadataSupported,
+    };
+
+    try {
+      const inserted = metadataSupported
+        ? await db
+            .insert(importLog)
+            .values({
+              ...baseInsertValues,
+              metadata: { insertedIds: [], updatedRecords: [], errors: [] },
+            })
+            .returning({ id: importLog.id })
+        : await db
+            .insert(importLog)
+            .values(baseInsertValues)
+            .returning({ id: importLog.id });
+
       const logRow = inserted[0];
       if (!logRow) {
-        return fail(500, "INTERNAL_ERROR", "Gagal membuat record import log");
+        console.error(
+          "[Import] INSERT import_log returned empty. Context:",
+          JSON.stringify(insertDebugContext),
+        );
+        return fail(
+          500,
+          "IMPORT_LOG_ERROR",
+          "Gagal membuat record import log: INSERT tidak mengembalikan row",
+        );
       }
       importLogId = logRow.id;
     } catch (err) {
-      logger.error("Failed to create import_log record", err);
-      return fail(500, "INTERNAL_ERROR", "Gagal membuat record import log");
+      // Fallback: jika gagal karena kolom metadata tidak dikenali runtime
+      // (schema drift antara Drizzle dan DB aktual), retry tanpa metadata.
+      const errMessage = extractErrorMessage(err).toLowerCase();
+      const isMetadataColumnError =
+        errMessage.includes("metadata") &&
+        (errMessage.includes("does not exist") ||
+          errMessage.includes("column") ||
+          errMessage.includes("unknown"));
+
+      if (metadataSupported && isMetadataColumnError) {
+        console.error(
+          "[Import] INSERT with metadata failed, retrying without metadata. Original error:",
+          err,
+        );
+        metadataSupported = false;
+        try {
+          const retry = await db
+            .insert(importLog)
+            .values(baseInsertValues)
+            .returning({ id: importLog.id });
+          const retryRow = retry[0];
+          if (!retryRow) {
+            return fail(
+              500,
+              "IMPORT_LOG_ERROR",
+              "Gagal membuat record import log: retry INSERT tidak mengembalikan row",
+            );
+          }
+          importLogId = retryRow.id;
+        } catch (retryErr) {
+          console.error(
+            "[Import] Retry INSERT without metadata also failed:",
+            retryErr,
+          );
+          console.error(
+            "[Import] Values attempted:",
+            JSON.stringify(insertDebugContext),
+          );
+          logger.error("Failed to create import_log record (retry)", retryErr);
+          return fail(
+            500,
+            "IMPORT_LOG_ERROR",
+            `Gagal membuat record import log: ${extractErrorMessage(retryErr)}`,
+          );
+        }
+      } else {
+        console.error("[Import] Failed to create import_log record:", err);
+        console.error(
+          "[Import] Values attempted:",
+          JSON.stringify(insertDebugContext),
+        );
+        logger.error("Failed to create import_log record", err);
+        return fail(
+          500,
+          "IMPORT_LOG_ERROR",
+          `Gagal membuat record import log: ${extractErrorMessage(err)}`,
+        );
+      }
     }
   } else {
     // Subsequent batches: use existing importLogId
     if (!body.importLogId) {
-      return fail(400, "IMPORT_LOG_ID_REQUIRED", "Import log ID diperlukan untuk batch selanjutnya");
+      return fail(
+        400,
+        "IMPORT_LOG_ID_REQUIRED",
+        "Import log ID diperlukan untuk batch selanjutnya. Pastikan batch pertama berhasil.",
+      );
     }
     importLogId = body.importLogId;
+
+    // Mirror the same idempotent preflight so this batch also knows whether
+    // metadata is writable on the current DB.
+    try {
+      await db.execute(
+        sql`ALTER TABLE import_log ADD COLUMN IF NOT EXISTS metadata jsonb`,
+      );
+    } catch (err) {
+      console.error(
+        "[Import] ALTER TABLE preflight failed on subsequent batch (continuing without metadata):",
+        err,
+      );
+      metadataSupported = false;
+    }
 
     // Verify import_log exists and is still processing
     const existing = await db
@@ -347,11 +467,13 @@ export async function POST(
     }
   }
 
-  // Update import_log with batch results
+  // Update import_log with batch results. Split into two phases:
+  //  1. Counters + status — always run, wajib agar progress tetap terlacak.
+  //  2. Metadata — hanya kalau kolom tersedia; jika gagal, import tetap sukses
+  //     tapi rollback tidak tersedia.
   const isLastBatch = body.batchIndex === body.totalBatches - 1;
 
   try {
-    // Append to metadata (insertedIds, updatedRecords, errors)
     await db
       .update(importLog)
       .set({
@@ -364,19 +486,6 @@ export async function POST(
               error_details: sql`COALESCE(${importLog.error_details}, '[]'::jsonb) || ${JSON.stringify(errors)}::jsonb`,
             }
           : {}),
-        metadata: sql`jsonb_set(
-          jsonb_set(
-            jsonb_set(
-              COALESCE(${importLog.metadata}, '{"insertedIds":[],"updatedRecords":[],"errors":[]}'::jsonb),
-              '{insertedIds}',
-              COALESCE(${importLog.metadata}->'insertedIds', '[]'::jsonb) || ${JSON.stringify(batchInsertedIds)}::jsonb
-            ),
-            '{updatedRecords}',
-            COALESCE(${importLog.metadata}->'updatedRecords', '[]'::jsonb) || ${JSON.stringify(batchUpdatedRecords)}::jsonb
-          ),
-          '{errors}',
-          COALESCE(${importLog.metadata}->'errors', '[]'::jsonb) || ${JSON.stringify(errors)}::jsonb
-        )`,
         ...(isLastBatch
           ? {
               status: errors.length > 0 && batchSuccess === 0 ? "failed" : "completed",
@@ -386,7 +495,37 @@ export async function POST(
       })
       .where(eq(importLog.id, importLogId));
   } catch (err) {
-    logger.error("Failed to update import_log record", err);
+    console.error("[Import] Failed to update import_log counters:", err);
+    logger.error("Failed to update import_log counters", err);
+  }
+
+  if (metadataSupported) {
+    try {
+      await db
+        .update(importLog)
+        .set({
+          metadata: sql`jsonb_set(
+            jsonb_set(
+              jsonb_set(
+                COALESCE(${importLog.metadata}, '{"insertedIds":[],"updatedRecords":[],"errors":[]}'::jsonb),
+                '{insertedIds}',
+                COALESCE(${importLog.metadata}->'insertedIds', '[]'::jsonb) || ${JSON.stringify(batchInsertedIds)}::jsonb
+              ),
+              '{updatedRecords}',
+              COALESCE(${importLog.metadata}->'updatedRecords', '[]'::jsonb) || ${JSON.stringify(batchUpdatedRecords)}::jsonb
+            ),
+            '{errors}',
+            COALESCE(${importLog.metadata}->'errors', '[]'::jsonb) || ${JSON.stringify(errors)}::jsonb
+          )`,
+        })
+        .where(eq(importLog.id, importLogId));
+    } catch (err) {
+      console.error(
+        "[Import] Failed to update import_log metadata (rollback data lost for this batch):",
+        err,
+      );
+      logger.error("Failed to update import_log metadata", err);
+    }
   }
 
   // Activity log on last batch
