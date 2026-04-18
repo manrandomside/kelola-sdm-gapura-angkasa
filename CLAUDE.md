@@ -440,6 +440,15 @@ src/
   - Rollback confirm dialog, invalidates `["import-logs"]` query on success
 - Full responsive: mobile card view for mapping, compact step indicator, horizontal-scroll tables, stacked action buttons, 2-col summary cards on mobile
 
+### Auto-Create User Account on Manual Add (2026-04-18)
+- Tambah karyawan manual via `POST /api/employees` sekarang otomatis membuat akun login (email `{nip}@gapura.internal`, password = NIP, role = `staff`), konsisten dengan flow import.
+- Shared utility: `src/lib/utils/create-user-account.ts` — fungsi `createUserAccount({ nip, namaLengkap, employeeId })`, dipakai oleh `/api/employees` POST dan `/api/import/execute-batch`.
+  - Skip (return `{ success: true, skipped: true }`) jika user dengan NIP tersebut sudah ada — link ulang ke `employee_id` baru, tidak overwrite auth.
+  - Fallback via `supabaseAdmin.auth.admin.listUsers` jika `createUser` mengembalikan error (auth user mungkin sudah ada tapi tabel `user` belum).
+  - Returns `{ success, skipped, userId?, authUserId?, error? }`.
+- POST response `/api/employees` sekarang return `{ employee, accountCreated, accountSkipped, accountError }`. Kegagalan buat akun TIDAK menggagalkan pembuatan karyawan — hanya di-log dan di-surface via `accountError`.
+- Frontend `employee-form.tsx` menampilkan toast berbeda berdasarkan hasil: dibuat / sudah ada / gagal dibuat.
+
 ### PKWT & Status Pegawai
 - `status_pegawai` 3 nilai: PEGAWAI TETAP, PKWT, TAD. PKWT bukan bagian TAD.
 - TAD hanya: PAKET SDM + PAKET PEKERJAAN.

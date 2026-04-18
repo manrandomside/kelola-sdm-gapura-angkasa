@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { activityLog, employee } from "@/lib/db/schema";
 import { createClient } from "@/lib/supabase/server";
 import { getProviderFilter, getSessionUser } from "@/lib/utils/auth";
+import { createUserAccount } from "@/lib/utils/create-user-account";
 import { logger } from "@/lib/utils/logger";
 import { createEmployeeSchema } from "@/lib/validations/employee";
 
@@ -299,6 +300,9 @@ interface CreatedEmployeeResponse {
     nip: string;
     nama_lengkap: string;
   };
+  accountCreated: boolean;
+  accountSkipped: boolean;
+  accountError: string | null;
 }
 
 export async function POST(
@@ -448,6 +452,31 @@ export async function POST(
       return fail(500, "INTERNAL_ERROR", "Gagal menambah karyawan");
     }
 
+    // Auto-create akun login — non-fatal jika gagal, hanya di-log.
+    // Konsisten dengan flow import bulk (execute-batch).
+    let accountCreated = false;
+    let accountSkipped = false;
+    let accountError: string | null = null;
+    try {
+      const accountResult = await createUserAccount({
+        nip: created.nip,
+        namaLengkap: created.nama_lengkap,
+        employeeId: created.id,
+      });
+      if (accountResult.success) {
+        accountCreated = !accountResult.skipped;
+        accountSkipped = accountResult.skipped;
+      } else {
+        accountError = accountResult.error ?? "Gagal membuat akun";
+        logger.error(
+          `Auto-create account failed for NIP ${created.nip}: ${accountError}`,
+        );
+      }
+    } catch (err) {
+      accountError = err instanceof Error ? err.message : "Gagal membuat akun";
+      logger.error("Failed to auto-create user account", err);
+    }
+
     // Activity log — non-fatal jika gagal.
     try {
       await db.insert(activityLog).values({
@@ -467,7 +496,12 @@ export async function POST(
 
     return NextResponse.json<ApiResponse<CreatedEmployeeResponse>>({
       success: true,
-      data: { employee: created },
+      data: {
+        employee: created,
+        accountCreated,
+        accountSkipped,
+        accountError,
+      },
     });
   } catch (err) {
     logger.error("Failed to create employee", err);

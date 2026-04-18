@@ -2,11 +2,11 @@ import { NextResponse } from "next/server";
 import { eq, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
-import { activityLog, employee, importLog, user } from "@/lib/db/schema";
+import { activityLog, employee, importLog } from "@/lib/db/schema";
 import { createClient } from "@/lib/supabase/server";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { KODE_ORGANISASI_MAP, STATUS_KONTRAK_TO_PEGAWAI } from "@/lib/constants/enums";
 import { getProviderFilter, getSessionUser } from "@/lib/utils/auth";
+import { createUserAccount } from "@/lib/utils/create-user-account";
 import { logger } from "@/lib/utils/logger";
 
 import type { ApiResponse } from "@/types/api";
@@ -67,10 +67,6 @@ function fail(
     { success: false, error: { code, message } },
     { status },
   );
-}
-
-function buildInternalEmail(nip: string): string {
-  return `${nip.trim().toLowerCase()}@gapura.internal`;
 }
 
 function buildEmployeeValues(data: NormalizedRow) {
@@ -195,7 +191,6 @@ export async function POST(
     return fail(400, "INVALID_BATCH_INFO", "Info batch tidak valid");
   }
 
-  const supabaseAdmin = createSupabaseAdminClient();
   let importLogId: string;
 
   // First batch: create import_log
@@ -327,60 +322,16 @@ export async function POST(
         batchInsertedIds.push(newEmp.id);
         insertedRecords += 1;
 
-        // Check existing user row for this NIP
-        const existingUserRow = await db
-          .select({ id: user.id, supabase_auth_id: user.supabase_auth_id })
-          .from(user)
-          .where(eq(user.nip, nip))
-          .limit(1);
-
-        if (existingUserRow.length > 0) {
-          await db
-            .update(user)
-            .set({ employee_id: newEmp.id, updated_at: new Date() })
-            .where(eq(user.id, existingUserRow[0]!.id));
-        } else {
-          const email = buildInternalEmail(nip);
-          let authUserId: string | null = null;
-
-          const createRes = await supabaseAdmin.auth.admin.createUser({
-            email,
-            password: nip,
-            email_confirm: true,
-            user_metadata: { nip, full_name: namaLengkap },
-          });
-
-          if (createRes.data.user) {
-            authUserId = createRes.data.user.id;
-            newAccounts += 1;
-          } else if (createRes.error) {
-            const lookup = await supabaseAdmin.auth.admin.listUsers({
-              page: 1,
-              perPage: 1000,
-            });
-            if (lookup.error) {
-              throw new Error(`Gagal membuat akun auth: ${createRes.error.message}`);
-            }
-            const match = lookup.data.users.find((u) => u.email === email);
-            if (!match) {
-              throw new Error(`Gagal membuat akun auth: ${createRes.error.message}`);
-            }
-            authUserId = match.id;
-          }
-
-          if (!authUserId) {
-            throw new Error("Auth user id tidak tersedia");
-          }
-
-          await db.insert(user).values({
-            supabase_auth_id: authUserId,
-            nip,
-            email,
-            full_name: namaLengkap,
-            role: "staff",
-            status: "active",
-            employee_id: newEmp.id,
-          });
+        const accountResult = await createUserAccount({
+          nip,
+          namaLengkap,
+          employeeId: newEmp.id,
+        });
+        if (!accountResult.success) {
+          throw new Error(accountResult.error ?? "Gagal membuat akun auth");
+        }
+        if (!accountResult.skipped) {
+          newAccounts += 1;
         }
 
         batchSuccess += 1;

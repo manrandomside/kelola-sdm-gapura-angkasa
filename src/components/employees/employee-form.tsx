@@ -177,6 +177,9 @@ type UniquenessState = "idle" | "checking" | "available" | "taken" | "error";
 
 interface CreatedEmployeeResponse {
   employee: { id: number; nip: string; nama_lengkap: string };
+  accountCreated?: boolean;
+  accountSkipped?: boolean;
+  accountError?: string | null;
 }
 
 async function createEmployee(
@@ -556,7 +559,21 @@ export function EmployeeForm({
         router.refresh();
       } else {
         const result = await createEmployee(values);
-        toast.success("Karyawan berhasil ditambahkan");
+        if (result.accountCreated) {
+          toast.success(
+            "Karyawan berhasil ditambahkan. Akun login otomatis dibuat (NIP = password).",
+          );
+        } else if (result.accountSkipped) {
+          toast.success(
+            "Karyawan berhasil ditambahkan. Akun login sudah ada sebelumnya.",
+          );
+        } else if (result.accountError) {
+          toast.warning(
+            `Karyawan berhasil ditambahkan, tetapi akun login gagal dibuat: ${result.accountError}`,
+          );
+        } else {
+          toast.success("Karyawan berhasil ditambahkan");
+        }
         router.push(ROUTES.EMPLOYEES_DETAIL(result.employee.id));
         router.refresh();
       }
