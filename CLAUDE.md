@@ -421,6 +421,25 @@ src/
 - Hook update: `src/hooks/use-import.ts` — added useImportBatch, useImportRollback, chunkArray helper, BATCH_SIZE constant
 - Old execute API (`POST /api/import/execute`) kept for backward compatibility
 
+### Import UI Redesign — 4-Step Wizard (2026-04-18)
+- Import page (`src/app/(dashboard)/import/page.tsx`) rewritten as 4-step wizard: Upload, Mapping, Preview, Import
+- `StepIndicator` component: green filled circle for active step, check icon for completed, gray for pending
+  - Desktop: shows step number + text label
+  - Mobile (`useIsMobile`): shows step number only, compact connector lines
+- **Step 1 Upload**: drag-drop via `react-dropzone`, 10MB limit, accepts .xlsx/.csv, auto-upload to preview API on file select, info alert about auto-create account (NIP = password), buttons for Download Template & Riwayat Import
+- **Step 2 Mapping**: auto-detect column mapping from API `detectedColumns`, shows confidence icon (exact=green check, fuzzy=amber triangle, unmapped=red X), dropdown field override with duplicate prevention (field used elsewhere is filtered out), required fields (nip, nama_lengkap) check blocks Lanjut button
+  - Desktop: table view (Kolom Excel → Field Database → Status)
+  - Mobile: card view (one card per column)
+- **Step 3 Preview**: 4 summary cards (Valid/Error/Update/Baru), filter tabs (Semua/Error/Update/Baru), row-colored table (red=error, blue=update, green=insert, gray=skip), action badge per row, expandable error detail per row with field + message, client-side pagination 50/page
+- **Step 4 Import**: chunked execution via `/api/import/execute-batch` with `BATCH_SIZE=50`, real-time progress bar, per-batch log with status icons (processing=spinner, completed=check, failed=X, pending=empty circle), auto-scroll batch log, 1x retry per batch, beforeunload warning while importing, counters for Berhasil/Gagal/Akun Baru
+  - On completion: summary cards, action buttons (Lihat Detail Error/Lihat Data Karyawan/Import Lagi/Rollback Import), error detail section with download as xlsx
+  - Rollback flow: confirm dialog → mutation → replace button with disabled "Import sudah di-rollback" badge
+- Riwayat Import page (`src/app/(dashboard)/import/logs/page.tsx`):
+  - New Aksi column with Rollback button (destructive variant) for status=completed
+  - New "Dibatalkan" badge (gray with Ban icon) for status=rolled_back
+  - Rollback confirm dialog, invalidates `["import-logs"]` query on success
+- Full responsive: mobile card view for mapping, compact step indicator, horizontal-scroll tables, stacked action buttons, 2-col summary cards on mobile
+
 ### PKWT & Status Pegawai
 - `status_pegawai` 3 nilai: PEGAWAI TETAP, PKWT, TAD. PKWT bukan bagian TAD.
 - TAD hanya: PAKET SDM + PAKET PEKERJAAN.

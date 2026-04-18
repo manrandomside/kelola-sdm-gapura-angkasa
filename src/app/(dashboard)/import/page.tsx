@@ -1,11 +1,12 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useDropzone, type FileRejection } from "react-dropzone";
 import {
-  AlertCircle,
+  AlertTriangle,
   ArrowLeft,
+  ArrowRight,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -17,6 +18,7 @@ import {
   Loader2,
   RotateCcw,
   Upload,
+  UserPlus,
   Users,
   X,
   XCircle,
@@ -25,6 +27,7 @@ import * as XLSX from "xlsx";
 import { toast } from "@/lib/utils/toast";
 
 import { Pagination } from "@/components/shared/pagination";
+import { Progress } from "@/components/ui/progress";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,6 +39,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -47,73 +51,103 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   useDownloadTemplate,
-  useImportExecute,
   useImportPreview,
-  type ImportExecuteResult,
+  useImportRollback,
+  BATCH_SIZE,
+  chunkArray,
+  type BatchExecuteResult,
 } from "@/hooks/use-import";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { ROUTES } from "@/lib/constants/routes";
 import { cn } from "@/lib/utils";
-
 import type {
-  ImportPreviewResult,
+  DetectedColumn,
+  EnhancedImportPreviewResult,
   ImportPreviewRow,
-  ImportRowStatus,
 } from "@/lib/utils/excel";
+import type { ApiResponse } from "@/types/api";
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+// ============================================================================
+// Constants & Types
+// ============================================================================
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const PREVIEW_PAGE_SIZE = 50;
+const REQUIRED_FIELDS = new Set(["nip", "nama_lengkap"]);
 
-type FilterTab = "all" | "valid" | "warning" | "error";
+type ImportStep = 1 | 2 | 3 | 4;
+type FilterTab = "all" | "error" | "update" | "new";
+type BatchStatus = "pending" | "processing" | "completed" | "failed";
 
-interface SummaryCardProps {
-  label: string;
-  value: number;
-  tone: "blue" | "green" | "amber" | "red" | "gray";
+const STEPS: { step: ImportStep; label: string }[] = [
+  { step: 1, label: "Upload" },
+  { step: 2, label: "Mapping" },
+  { step: 3, label: "Preview" },
+  { step: 4, label: "Import" },
+];
+
+interface BatchLog {
+  index: number;
+  status: BatchStatus;
+  success: number;
+  errors: number;
+  newAccounts: number;
+  duration: number;
+  errorMessages: string[];
 }
 
-const TONE_BG: Record<SummaryCardProps["tone"], string> = {
-  blue: "bg-blue-50 border-blue-200",
-  green: "bg-green-50 border-green-200",
-  amber: "bg-amber-50 border-amber-200",
-  red: "bg-red-50 border-red-200",
-  gray: "bg-gray-50 border-gray-200",
-};
+const DB_FIELD_OPTIONS: { value: string; label: string }[] = [
+  { value: "no", label: "No" },
+  { value: "nip", label: "NIP" },
+  { value: "nik", label: "NIK" },
+  { value: "nama_lengkap", label: "Nama Lengkap" },
+  { value: "jenis_kelamin", label: "Jenis Kelamin" },
+  { value: "tempat_lahir", label: "Tempat Lahir" },
+  { value: "tanggal_lahir", label: "Tanggal Lahir" },
+  { value: "usia", label: "Usia" },
+  { value: "alamat", label: "Alamat" },
+  { value: "kota_domisili", label: "Kota Domisili" },
+  { value: "handphone", label: "Handphone" },
+  { value: "email", label: "Email" },
+  { value: "status_pegawai", label: "Status Pegawai" },
+  { value: "status_kontrak", label: "Status Kontrak" },
+  { value: "status_kerja", label: "Status Kerja" },
+  { value: "provider", label: "Provider" },
+  { value: "lokasi_kerja", label: "Lokasi Kerja" },
+  { value: "cabang", label: "Cabang" },
+  { value: "kode_organisasi", label: "Kode Organisasi" },
+  { value: "unit_organisasi", label: "Unit Organisasi" },
+  { value: "nama_organisasi", label: "Nama Organisasi" },
+  { value: "sub_unit_organisasi", label: "Sub Unit Organisasi" },
+  { value: "nama_jabatan", label: "Nama Jabatan" },
+  { value: "unit_kerja_kontrak", label: "Unit Kerja Kontrak" },
+  { value: "tmt_mulai_kerja", label: "TMT Mulai Kerja" },
+  { value: "tmt_berakhir_kerja", label: "TMT Berakhir Kerja" },
+  { value: "tmt_mulai_jabatan", label: "TMT Mulai Jabatan" },
+  { value: "tmt_berakhir_jabatan", label: "TMT Berakhir Jabatan" },
+  { value: "tmt_pensiun", label: "TMT Pensiun" },
+  { value: "masa_kerja_bulan", label: "Masa Kerja (Bulan)" },
+  { value: "masa_kerja_tahun", label: "Masa Kerja (Tahun)" },
+  { value: "pendidikan", label: "Pendidikan" },
+  { value: "instansi_pendidikan", label: "Instansi Pendidikan" },
+  { value: "jurusan", label: "Jurusan" },
+  { value: "remarks_pendidikan", label: "Remarks Pendidikan" },
+  { value: "tahun_lulus", label: "Tahun Lulus" },
+  { value: "kategori_karyawan", label: "Kategori Karyawan" },
+  { value: "grade", label: "Grade" },
+  { value: "no_bpjs_kesehatan", label: "No BPJS Kesehatan" },
+  { value: "no_bpjs_ketenagakerjaan", label: "No BPJS Ketenagakerjaan" },
+  { value: "kelompok_jabatan", label: "Kelompok Jabatan" },
+  { value: "kelas_jabatan", label: "Kelas Jabatan" },
+  { value: "jenis_sepatu", label: "Jenis Sepatu" },
+  { value: "ukuran_sepatu", label: "Ukuran Sepatu" },
+  { value: "height", label: "Height (cm)" },
+  { value: "weight", label: "Weight (kg)" },
+];
 
-const TONE_TEXT: Record<SummaryCardProps["tone"], string> = {
-  blue: "text-blue-700",
-  green: "text-green-700",
-  amber: "text-amber-700",
-  red: "text-red-700",
-  gray: "text-gray-700",
-};
-
-function SummaryCard({ label, value, tone }: SummaryCardProps) {
-  return (
-    <div
-      className={cn(
-        "flex-1 min-w-[140px] rounded-xl border px-4 py-3",
-        TONE_BG[tone],
-      )}
-    >
-      <p className="text-xs font-medium text-muted-foreground">{label}</p>
-      <p
-        className={cn("mt-1 text-2xl font-bold tabular-nums", TONE_TEXT[tone])}
-      >
-        {value.toLocaleString("id-ID")}
-      </p>
-    </div>
-  );
-}
-
-function StatusIcon({ status }: { status: ImportRowStatus }) {
-  if (status === "valid") {
-    return <CheckCircle2 className="size-4 text-green-600" />;
-  }
-  if (status === "warning") {
-    return <AlertCircle className="size-4 text-amber-600" />;
-  }
-  return <XCircle className="size-4 text-red-600" />;
-}
+// ============================================================================
+// Helpers
+// ============================================================================
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -121,31 +155,47 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
 
-type ImportStep = 1 | 2 | 3;
+function formatDurationMs(ms: number): string {
+  return `${(ms / 1000).toFixed(1)} detik`;
+}
 
-const STEPS: { step: ImportStep; label: string; shortLabel: string }[] = [
-  { step: 1, label: "Upload File", shortLabel: "Upload" },
-  { step: 2, label: "Preview & Validasi", shortLabel: "Preview" },
-  { step: 3, label: "Proses Import", shortLabel: "Import" },
-];
+function getEffectiveConfidence(
+  col: DetectedColumn,
+  currentField: string | null,
+): "exact" | "fuzzy" | "unmapped" {
+  if (currentField === null) return "unmapped";
+  if (currentField === col.mappedField) return col.confidence;
+  return "exact";
+}
 
-function StepIndicator({ currentStep }: { currentStep: ImportStep }) {
+// ============================================================================
+// Sub-components
+// ============================================================================
+
+function StepIndicator({
+  currentStep,
+  completedSteps,
+}: {
+  currentStep: ImportStep;
+  completedSteps: ReadonlySet<number>;
+}) {
+  const isMobile = useIsMobile();
   return (
     <div className="flex items-center justify-center gap-0">
-      {STEPS.map(({ step, label, shortLabel }, idx) => {
-        const isCompleted = step < currentStep;
+      {STEPS.map(({ step, label }, idx) => {
+        const isCompleted = completedSteps.has(step);
         const isActive = step === currentStep;
         return (
           <Fragment key={step}>
             {idx > 0 && (
               <div
                 className={cn(
-                  "h-0.5 w-8 sm:w-16",
+                  "h-0.5 w-6 sm:w-12 md:w-16",
                   isCompleted || isActive ? "bg-primary" : "bg-border",
                 )}
               />
             )}
-            <div className="flex flex-col items-center gap-1.5">
+            <div className="flex flex-col items-center gap-1">
               <div
                 className={cn(
                   "flex size-8 items-center justify-center rounded-full text-sm font-semibold transition-colors",
@@ -156,29 +206,63 @@ function StepIndicator({ currentStep }: { currentStep: ImportStep }) {
                       : "bg-muted text-muted-foreground",
                 )}
               >
-                {isCompleted ? (
-                  <Check className="size-4" />
-                ) : (
-                  step
-                )}
+                {isCompleted ? <Check className="size-4" /> : step}
               </div>
-              <span
-                className={cn(
-                  "text-xs font-medium",
-                  isActive
-                    ? "text-primary"
-                    : isCompleted
-                      ? "text-foreground"
-                      : "text-muted-foreground",
-                )}
-              >
-                <span className="hidden sm:inline">{label}</span>
-                <span className="sm:hidden">{shortLabel}</span>
-              </span>
+              {!isMobile && (
+                <span
+                  className={cn(
+                    "text-[11px] font-medium whitespace-nowrap",
+                    isActive
+                      ? "text-primary"
+                      : isCompleted
+                        ? "text-foreground"
+                        : "text-muted-foreground",
+                  )}
+                >
+                  {label}
+                </span>
+              )}
             </div>
           </Fragment>
         );
       })}
+    </div>
+  );
+}
+
+interface SummaryCardProps {
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+  tone: "green" | "red" | "blue" | "emerald";
+}
+
+const TONE_STYLES: Record<
+  SummaryCardProps["tone"],
+  { bg: string; text: string }
+> = {
+  green: { bg: "bg-green-50 border-green-200", text: "text-green-700" },
+  red: { bg: "bg-red-50 border-red-200", text: "text-red-700" },
+  blue: { bg: "bg-blue-50 border-blue-200", text: "text-blue-700" },
+  emerald: {
+    bg: "bg-emerald-50 border-emerald-200",
+    text: "text-emerald-700",
+  },
+};
+
+function SummaryCard({ icon, label, value, tone }: SummaryCardProps) {
+  const style = TONE_STYLES[tone];
+  return (
+    <div className={cn("flex-1 min-w-[110px] rounded-xl border px-3 py-3 sm:px-4", style.bg)}>
+      <div className="flex items-center gap-1.5">
+        {icon}
+        <p className="text-[11px] font-medium text-muted-foreground sm:text-xs">
+          {label}
+        </p>
+      </div>
+      <p className={cn("mt-1 text-xl font-bold tabular-nums sm:text-2xl", style.text)}>
+        {value.toLocaleString("id-ID")}
+      </p>
     </div>
   );
 }
@@ -200,54 +284,157 @@ function InfoAlert() {
   );
 }
 
+function ConfidenceIcon({
+  confidence,
+}: {
+  confidence: "exact" | "fuzzy" | "unmapped";
+}) {
+  if (confidence === "exact")
+    return <Check className="size-4 text-green-600" />;
+  if (confidence === "fuzzy")
+    return <AlertTriangle className="size-4 text-amber-500" />;
+  return <X className="size-4 text-red-500" />;
+}
+
+function ConfidenceLabel({
+  confidence,
+}: {
+  confidence: "exact" | "fuzzy" | "unmapped";
+}) {
+  if (confidence === "exact")
+    return <span className="text-xs font-medium text-green-600">Cocok</span>;
+  if (confidence === "fuzzy")
+    return <span className="text-xs font-medium text-amber-600">Mirip</span>;
+  return <span className="text-xs font-medium text-red-500">Belum</span>;
+}
+
+function ActionBadge({ row }: { row: ImportPreviewRow }) {
+  if (row.status === "error") {
+    return (
+      <span className="rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-red-700">
+        Error
+      </span>
+    );
+  }
+  if (!row.data.nama_lengkap) {
+    return (
+      <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-gray-600">
+        Skip
+      </span>
+    );
+  }
+  if (row.isExistingNip) {
+    return (
+      <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-blue-700">
+        Update
+      </span>
+    );
+  }
+  return (
+    <span className="rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-green-700">
+      Insert
+    </span>
+  );
+}
+
+// ============================================================================
+// Main Component
+// ============================================================================
+
 export default function ImportPage() {
+  // -- Step management --
+  const [step, setStep] = useState<ImportStep>(1);
+  const completedSteps = useMemo(() => {
+    const s = new Set<number>();
+    for (let i = 1; i < step; i++) s.add(i);
+    return s;
+  }, [step]);
+
+  // -- Step 1: Upload --
   const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<ImportPreviewResult | null>(null);
+  const downloadTemplate = useDownloadTemplate();
+  const importPreview = useImportPreview();
+  const preview = importPreview.data as
+    | EnhancedImportPreviewResult
+    | undefined;
+
+  // -- Step 2: Mapping --
+  const [columnMapping, setColumnMapping] = useState<
+    Map<string, string | null>
+  >(new Map());
+
+  // -- Step 3: Preview --
   const [filterTab, setFilterTab] = useState<FilterTab>("all");
   const [previewPage, setPreviewPage] = useState(1);
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-  const [executeResult, setExecuteResult] =
-    useState<ImportExecuteResult | null>(null);
+
+  // -- Step 4: Import --
+  const [batchLogs, setBatchLogs] = useState<BatchLog[]>([]);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importComplete, setImportComplete] = useState(false);
+  const [totalSuccess, setTotalSuccess] = useState(0);
+  const [totalErrors, setTotalErrors] = useState(0);
+  const [totalAccounts, setTotalAccounts] = useState(0);
+  const [importLogId, setImportLogId] = useState<string | null>(null);
+
+  // -- Rollback --
+  const [isRollbackConfirmOpen, setIsRollbackConfirmOpen] = useState(false);
+  const [isRolledBack, setIsRolledBack] = useState(false);
+  const rollbackMutation = useImportRollback();
+
+  const isMobile = useIsMobile();
   const errorSectionRef = useRef<HTMLDivElement>(null);
+  const batchLogEndRef = useRef<HTMLDivElement>(null);
 
-  const downloadTemplate = useDownloadTemplate();
-  const importPreview = useImportPreview();
-  const importExecute = useImportExecute();
-
-  // Warning saat user mencoba meninggalkan halaman ketika import sedang
-  // berjalan — proses 1414 row bisa 5-15 menit, jangan sampai interrupt.
+  // Init column mapping from preview
   useEffect(() => {
-    if (!importExecute.isPending) return;
+    if (preview?.detectedColumns) {
+      const mapping = new Map<string, string | null>();
+      for (const col of preview.detectedColumns) {
+        mapping.set(col.excelHeader, col.mappedField);
+      }
+      setColumnMapping(mapping);
+    }
+  }, [preview?.detectedColumns]);
+
+  // Prevent page close during import
+  useEffect(() => {
+    if (!isImporting) return;
     function handleBeforeUnload(e: BeforeUnloadEvent) {
       e.preventDefault();
       e.returnValue = "";
     }
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [importExecute.isPending]);
+  }, [isImporting]);
 
-  const onDrop = useCallback(
-    (accepted: File[], rejections: FileRejection[]) => {
-      if (rejections.length > 0) {
-        const rejection = rejections[0];
-        const code = rejection.errors[0]?.code;
-        if (code === "file-too-large") {
-          toast.error("Ukuran file melebihi 10MB");
-        } else if (code === "file-invalid-type") {
-          toast.error("Format file harus .xlsx atau .csv");
-        } else {
-          toast.error("File tidak dapat diterima");
-        }
-        return;
-      }
-      const accepted0 = accepted[0];
-      if (accepted0) {
-        setFile(accepted0);
-      }
-    },
-    [],
-  );
+  // Auto-scroll batch log
+  useEffect(() => {
+    if (isImporting) {
+      batchLogEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [batchLogs, isImporting]);
+
+  // ---- File handling ----
+  function onDrop(accepted: File[], rejections: FileRejection[]) {
+    if (rejections.length > 0) {
+      const code = rejections[0]?.errors[0]?.code;
+      if (code === "file-too-large")
+        toast.error("Ukuran file melebihi 10MB");
+      else if (code === "file-invalid-type")
+        toast.error("Format file harus .xlsx atau .csv");
+      else toast.error("File tidak dapat diterima");
+      return;
+    }
+    const selected = accepted[0];
+    if (selected) {
+      setFile(selected);
+      importPreview.mutate(selected, {
+        onSuccess: () => setStep(2),
+      });
+    }
+  }
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -261,111 +448,98 @@ export default function ImportPage() {
     },
   });
 
-  function handleProcessFile() {
-    if (!file) return;
-    importPreview.mutate(file, {
-      onSuccess: (data) => {
-        setPreview(data);
-        setFilterTab("all");
-        setPreviewPage(1);
-        setExpandedRows(new Set());
-      },
-    });
+  // ---- Navigation ----
+  function handleBackToUpload() {
+    setStep(1);
+    setFile(null);
+    importPreview.reset();
+    setColumnMapping(new Map());
   }
 
-  function handleBackToUpload() {
-    setPreview(null);
+  function handleBackToMapping() {
+    setStep(2);
     setFilterTab("all");
     setPreviewPage(1);
     setExpandedRows(new Set());
   }
 
   function handleResetAll() {
+    setStep(1);
     setFile(null);
-    setPreview(null);
-    setExecuteResult(null);
+    importPreview.reset();
+    setColumnMapping(new Map());
     setFilterTab("all");
     setPreviewPage(1);
     setExpandedRows(new Set());
-    importExecute.reset();
-    importPreview.reset();
+    setBatchLogs([]);
+    setIsImporting(false);
+    setImportComplete(false);
+    setTotalSuccess(0);
+    setTotalErrors(0);
+    setTotalAccounts(0);
+    setImportLogId(null);
+    setIsRolledBack(false);
+    rollbackMutation.reset();
   }
 
-  function toggleRowExpanded(rowNumber: number) {
-    setExpandedRows((prev) => {
-      const next = new Set(prev);
-      if (next.has(rowNumber)) next.delete(rowNumber);
-      else next.add(rowNumber);
+  // ---- Mapping ----
+  function handleMappingChange(excelHeader: string, newField: string) {
+    setColumnMapping((prev) => {
+      const next = new Map(prev);
+      next.set(excelHeader, newField === "__skip__" || !newField ? null : newField);
       return next;
     });
   }
 
-  function handleConfirmImport() {
-    if (!preview || !file) return;
-    setIsConfirmOpen(false);
+  const mappedFields = useMemo(
+    () =>
+      new Set(
+        Array.from(columnMapping.values()).filter(
+          (v): v is string => v !== null,
+        ),
+      ),
+    [columnMapping],
+  );
 
-    // Kirim hanya row valid + warning (bukan error/skip).
-    const rowsToSend = preview.rows
-      .filter((r) => r.status === "valid" || r.status === "warning")
-      .map((r) => ({
-        rowNumber: r.rowNumber,
-        data: r.data,
-        isExistingNip: r.isExistingNip,
-      }));
+  const requiredFieldsMapped = useMemo(
+    () => Array.from(REQUIRED_FIELDS).every((f) => mappedFields.has(f)),
+    [mappedFields],
+  );
 
-    importExecute.mutate(
-      { rows: rowsToSend, fileName: file.name },
-      {
-        onSuccess: (data) => {
-          setExecuteResult(data);
-          if (data.errorCount === 0) {
-            toast.success(
-              `${data.successCount.toLocaleString("id-ID")} data berhasil diimport`,
-            );
-          } else if (data.successCount === 0) {
-            toast.error("Import gagal. Semua baris mengalami error.");
-          } else {
-            toast.warning(
-              `Import selesai dengan ${data.errorCount} error`,
-            );
-          }
-        },
-      },
-    );
-  }
+  const autoMappedCount = useMemo(
+    () =>
+      preview?.detectedColumns.filter((c) => c.confidence !== "unmapped")
+        .length ?? 0,
+    [preview],
+  );
 
-  function handleDownloadErrorReport() {
-    if (!executeResult || executeResult.errors.length === 0) return;
-    const rows = executeResult.errors.map((e) => ({
-      "No Baris": e.rowNumber,
-      NIP: e.nip ?? "",
-      Nama: e.nama_lengkap ?? "",
-      Error: e.error,
-    }));
-    const sheet = XLSX.utils.json_to_sheet(rows);
-    sheet["!cols"] = [
-      { wch: 10 },
-      { wch: 20 },
-      { wch: 35 },
-      { wch: 60 },
-    ];
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, sheet, "Error Import");
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, "0");
-    const dd = String(today.getDate()).padStart(2, "0");
-    XLSX.writeFile(workbook, `Error_Import_${yyyy}-${mm}-${dd}.xlsx`);
-  }
+  const unmappedCount = useMemo(
+    () =>
+      preview?.detectedColumns.filter((c) => c.confidence === "unmapped")
+        .length ?? 0,
+    [preview],
+  );
 
-  // Filter rows berdasarkan tab aktif.
+  // ---- Preview filtering ----
   const filteredRows = useMemo<ImportPreviewRow[]>(() => {
     if (!preview) return [];
-    if (filterTab === "all") return preview.rows;
-    return preview.rows.filter((r) => r.status === filterTab);
+    switch (filterTab) {
+      case "error":
+        return preview.rows.filter((r) => r.status === "error");
+      case "update":
+        return preview.rows.filter(
+          (r) => r.isExistingNip && r.status !== "error",
+        );
+      case "new":
+        return preview.rows.filter(
+          (r) =>
+            !r.isExistingNip && r.status !== "error" && r.data.nama_lengkap,
+        );
+      default:
+        return preview.rows;
+    }
   }, [preview, filterTab]);
 
-  // Client-side pagination.
   const totalPages = Math.max(
     1,
     Math.ceil(filteredRows.length / PREVIEW_PAGE_SIZE),
@@ -381,311 +555,588 @@ export default function ImportPage() {
     ? preview.summary.validCount + preview.summary.warningCount
     : 0;
 
-  // Determine current step for the step indicator.
-  const currentStep: ImportStep =
-    executeResult || importExecute.isPending ? 3 : preview ? 2 : 1;
+  // ---- Batch Import ----
+  async function startBatchImport() {
+    if (!preview || !file) return;
+    setIsConfirmOpen(false);
+    setStep(4);
+    setIsImporting(true);
+    setImportComplete(false);
+    setTotalSuccess(0);
+    setTotalErrors(0);
+    setTotalAccounts(0);
+    setImportLogId(null);
+    setIsRolledBack(false);
 
-  // ==========================================================================
-  // Step 4 — Hasil Import (setelah execute selesai)
-  // ==========================================================================
-  if (executeResult) {
-    const {
-      successCount,
-      errorCount,
-      accountsCreated,
-      errors: resultErrors,
-    } = executeResult;
+    const validRows = preview.rows
+      .filter((r) => r.status === "valid" || r.status === "warning")
+      .map((r) => ({
+        rowNumber: r.rowNumber,
+        data: r.data,
+        isExistingNip: r.isExistingNip,
+      }));
+
+    const chunks = chunkArray(validRows, BATCH_SIZE);
+    const totalBatches = chunks.length;
+
+    const initialLogs: BatchLog[] = chunks.map((_, i) => ({
+      index: i,
+      status: "pending" as const,
+      success: 0,
+      errors: 0,
+      newAccounts: 0,
+      duration: 0,
+      errorMessages: [],
+    }));
+    setBatchLogs(initialLogs);
+
+    let logId: string | null = null;
+    let accSuccess = 0;
+    let accErrors = 0;
+    let accAccounts = 0;
+
+    for (let i = 0; i < totalBatches; i++) {
+      setBatchLogs((prev) =>
+        prev.map((l, idx) =>
+          idx === i ? { ...l, status: "processing" } : l,
+        ),
+      );
+
+      const startTime = Date.now();
+      let result: BatchExecuteResult | null = null;
+
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const res = await fetch("/api/import/execute-batch", {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              rows: chunks[i],
+              batchIndex: i,
+              totalBatches,
+              importLogId: logId ?? undefined,
+              fileName: file.name,
+            }),
+          });
+          const json = (await res.json()) as ApiResponse<BatchExecuteResult>;
+          if (!json.success) throw new Error(json.error.message);
+          result = json.data;
+          break;
+        } catch (err) {
+          if (attempt === 1) {
+            const duration = Date.now() - startTime;
+            const errorMsg =
+              err instanceof Error
+                ? err.message
+                : "Kesalahan tidak diketahui";
+            const batchSize = chunks[i]!.length;
+            accErrors += batchSize;
+            setBatchLogs((prev) =>
+              prev.map((l, idx) =>
+                idx === i
+                  ? {
+                      ...l,
+                      status: "failed",
+                      errors: batchSize,
+                      duration,
+                      errorMessages: [errorMsg],
+                    }
+                  : l,
+              ),
+            );
+            setTotalErrors(accErrors);
+          }
+        }
+      }
+
+      if (result) {
+        const duration = Date.now() - startTime;
+        logId = result.importLogId;
+        accSuccess += result.batchSuccess;
+        accErrors += result.batchErrors;
+        accAccounts += result.newAccounts;
+
+        setBatchLogs((prev) =>
+          prev.map((l, idx) =>
+            idx === i
+              ? {
+                  ...l,
+                  status: "completed",
+                  success: result!.batchSuccess,
+                  errors: result!.batchErrors,
+                  newAccounts: result!.newAccounts,
+                  duration,
+                  errorMessages: result!.errors.map(
+                    (e) => `Row ${e.row}: ${e.message}`,
+                  ),
+                }
+              : l,
+          ),
+        );
+
+        setTotalSuccess(accSuccess);
+        setTotalErrors(accErrors);
+        setTotalAccounts(accAccounts);
+        setImportLogId(logId);
+      }
+    }
+
+    setIsImporting(false);
+    setImportComplete(true);
+
+    if (accErrors === 0) {
+      toast.success(
+        `${accSuccess.toLocaleString("id-ID")} data berhasil diimport`,
+      );
+    } else if (accSuccess === 0) {
+      toast.error("Import gagal. Semua baris mengalami error.");
+    } else {
+      toast.warning(`Import selesai dengan ${accErrors} error`);
+    }
+  }
+
+  // ---- Rollback ----
+  function handleRollback() {
+    if (!importLogId) return;
+    setIsRollbackConfirmOpen(false);
+    rollbackMutation.mutate(
+      { importLogId },
+      { onSuccess: () => setIsRolledBack(true) },
+    );
+  }
+
+  // ---- Error Report ----
+  function handleDownloadErrorReport() {
+    const logs = batchLogs.filter((l) => l.errorMessages.length > 0);
+    if (logs.length === 0) return;
+    const rows = logs.flatMap((batch) =>
+      batch.errorMessages.map((msg) => ({
+        Batch: batch.index + 1,
+        Error: msg,
+      })),
+    );
+    const sheet = XLSX.utils.json_to_sheet(rows);
+    sheet["!cols"] = [{ wch: 10 }, { wch: 80 }];
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, sheet, "Error Import");
+    const d = new Date();
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    XLSX.writeFile(workbook, `Error_Import_${dateStr}.xlsx`);
+  }
+
+  // ---- Row expand ----
+  function toggleRowExpanded(rowNumber: number) {
+    setExpandedRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(rowNumber)) next.delete(rowNumber);
+      else next.add(rowNumber);
+      return next;
+    });
+  }
+
+  // ======================================================================
+  // STEP 4: Import Progress & Results
+  // ======================================================================
+  if (step === 4) {
+    const processedCount = batchLogs.reduce(
+      (sum, l) => sum + l.success + l.errors,
+      0,
+    );
+    const completedBatches = batchLogs.filter(
+      (l) => l.status === "completed" || l.status === "failed",
+    ).length;
+    const progressPercent =
+      batchLogs.length > 0
+        ? Math.round((completedBatches / batchLogs.length) * 100)
+        : 0;
+    const hasAnyErrors = batchLogs.some((l) => l.errorMessages.length > 0);
 
     return (
       <div className="space-y-6">
-        <StepIndicator currentStep={3} />
+        <StepIndicator currentStep={4} completedSteps={completedSteps} />
 
-        <div className="space-y-1 text-center">
-          <h1 className="flex items-center justify-center gap-2 text-2xl font-bold text-foreground sm:text-3xl">
-            <CheckCircle2 className="size-7 text-primary" />
-            Import Selesai
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Ringkasan hasil eksekusi import data karyawan.
-          </p>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="rounded-xl border border-green-200 bg-green-50 p-5">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="size-5 text-green-600" />
-              <p className="text-sm font-semibold text-green-800">
-                Berhasil
+        {!importComplete ? (
+          <>
+            <div className="space-y-1 text-center">
+              <h1 className="text-xl font-bold text-foreground sm:text-2xl">
+                Proses Import
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                Mengimport data ke database dalam beberapa batch.
               </p>
             </div>
-            <p className="mt-2 text-3xl font-bold tabular-nums text-green-700">
-              {successCount.toLocaleString("id-ID")}
-            </p>
-            <p className="mt-1 text-xs text-green-700/80">
-              data karyawan ter-import
-            </p>
-          </div>
 
-          <div
-            className={cn(
-              "rounded-xl border p-5",
-              errorCount > 0
-                ? "border-red-200 bg-red-50"
-                : "border-gray-200 bg-gray-50",
-            )}
-          >
-            <div className="flex items-center gap-2">
-              <XCircle
-                className={cn(
-                  "size-5",
-                  errorCount > 0 ? "text-red-600" : "text-gray-400",
-                )}
+            <div className="mx-auto max-w-lg space-y-3">
+              <Progress value={progressPercent} />
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">
+                  Batch{" "}
+                  {Math.min(completedBatches + 1, batchLogs.length)} dari{" "}
+                  {batchLogs.length}
+                </span>
+                <span className="font-semibold tabular-nums text-foreground">
+                  {progressPercent}%
+                </span>
+              </div>
+              <p className="text-center text-sm text-muted-foreground">
+                {processedCount.toLocaleString("id-ID")} /{" "}
+                {importableCount.toLocaleString("id-ID")} karyawan diproses
+              </p>
+              <div className="flex flex-wrap justify-center gap-3 text-sm sm:gap-4">
+                <span className="text-green-700">
+                  Berhasil:{" "}
+                  <strong className="tabular-nums">
+                    {totalSuccess.toLocaleString("id-ID")}
+                  </strong>
+                </span>
+                <span className="text-red-700">
+                  Gagal:{" "}
+                  <strong className="tabular-nums">
+                    {totalErrors.toLocaleString("id-ID")}
+                  </strong>
+                </span>
+                <span className="text-blue-700">
+                  Akun Baru:{" "}
+                  <strong className="tabular-nums">
+                    {totalAccounts.toLocaleString("id-ID")}
+                  </strong>
+                </span>
+              </div>
+            </div>
+
+            {/* Batch log */}
+            <div className="mx-auto max-w-lg rounded-xl border border-border bg-card">
+              <div className="border-b border-border bg-muted/30 px-4 py-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Log Progress
+                </p>
+              </div>
+              <div className="max-h-[300px] space-y-1.5 overflow-y-auto p-3">
+                {batchLogs.map((log) => (
+                  <div key={log.index} className="text-xs sm:text-sm">
+                    {log.status === "completed" && (
+                      <div className="flex items-start gap-2">
+                        <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-green-600" />
+                        <span className="text-muted-foreground">
+                          Batch {log.index + 1}: {log.success} berhasil
+                          {log.errors > 0 ? `, ${log.errors} gagal` : ""} (
+                          {formatDurationMs(log.duration)})
+                        </span>
+                      </div>
+                    )}
+                    {log.status === "completed" &&
+                      log.errorMessages.length > 0 &&
+                      log.errorMessages.map((msg, mi) => (
+                        <p
+                          key={`${log.index}-e-${mi}`}
+                          className="ml-5 text-xs text-red-600"
+                        >
+                          {msg}
+                        </p>
+                      ))}
+                    {log.status === "failed" && (
+                      <div className="flex items-start gap-2">
+                        <XCircle className="mt-0.5 size-3.5 shrink-0 text-red-500" />
+                        <div>
+                          <span className="text-red-700">
+                            Batch {log.index + 1}: Gagal
+                          </span>
+                          {log.errorMessages.map((msg, mi) => (
+                            <p
+                              key={`${log.index}-f-${mi}`}
+                              className="text-xs text-red-600"
+                            >
+                              {msg}
+                            </p>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {log.status === "processing" && (
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="size-3.5 animate-spin text-primary" />
+                        <span className="text-foreground">
+                          Batch {log.index + 1}: Memproses...
+                        </span>
+                      </div>
+                    )}
+                    {log.status === "pending" && (
+                      <div className="flex items-center gap-2 text-muted-foreground/50">
+                        <div className="size-3.5 rounded-full border border-current" />
+                        <span>Batch {log.index + 1}: Menunggu...</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+                <div ref={batchLogEndRef} />
+              </div>
+            </div>
+
+            <p className="text-center text-xs text-muted-foreground">
+              Jangan tutup atau refresh halaman ini sampai proses selesai.
+            </p>
+          </>
+        ) : (
+          <>
+            {/* ---- Import Complete ---- */}
+            <div className="space-y-1 text-center">
+              <h1 className="flex items-center justify-center gap-2 text-xl font-bold text-foreground sm:text-2xl">
+                <CheckCircle2 className="size-7 text-primary" />
+                Import Selesai
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                Ringkasan hasil import data karyawan.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <SummaryCard
+                icon={<CheckCircle2 className="size-4 text-green-600" />}
+                label="Berhasil"
+                value={totalSuccess}
+                tone="green"
               />
-              <p
-                className={cn(
-                  "text-sm font-semibold",
-                  errorCount > 0 ? "text-red-800" : "text-gray-600",
-                )}
-              >
-                Gagal
-              </p>
-            </div>
-            <p
-              className={cn(
-                "mt-2 text-3xl font-bold tabular-nums",
-                errorCount > 0 ? "text-red-700" : "text-gray-500",
+              {totalErrors > 0 && (
+                <SummaryCard
+                  icon={<XCircle className="size-4 text-red-600" />}
+                  label="Gagal"
+                  value={totalErrors}
+                  tone="red"
+                />
               )}
-            >
-              {errorCount.toLocaleString("id-ID")}
-            </p>
-            <p
-              className={cn(
-                "mt-1 text-xs",
-                errorCount > 0 ? "text-red-700/80" : "text-gray-500",
-              )}
-            >
-              baris tidak bisa diproses
-            </p>
-          </div>
-
-          <div className="rounded-xl border border-blue-200 bg-blue-50 p-5">
-            <div className="flex items-center gap-2">
-              <Users className="size-5 text-blue-600" />
-              <p className="text-sm font-semibold text-blue-800">
-                Akun Baru
-              </p>
+              <SummaryCard
+                icon={<UserPlus className="size-4 text-blue-600" />}
+                label="Akun Baru"
+                value={totalAccounts}
+                tone="blue"
+              />
             </div>
-            <p className="mt-2 text-3xl font-bold tabular-nums text-blue-700">
-              {accountsCreated.toLocaleString("id-ID")}
-            </p>
-            <p className="mt-1 text-xs text-blue-700/80">
-              akun login dibuat (password = NIP)
-            </p>
-          </div>
-        </div>
 
-        {/* Actionable buttons */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-center">
-          {resultErrors.length > 0 && (
-            <Button
-              variant="outline"
-              onClick={() =>
-                errorSectionRef.current?.scrollIntoView({
-                  behavior: "smooth",
-                })
-              }
-            >
-              <AlertCircle className="size-4" />
-              Lihat Detail Error
-            </Button>
-          )}
-          <Button render={<Link href={ROUTES.EMPLOYEES} />}>
-            <Users className="size-4" />
-            Lihat Data Karyawan
-          </Button>
-          <Button variant="outline" onClick={handleResetAll}>
-            <RotateCcw className="size-4" />
-            Import Lagi
-          </Button>
-        </div>
-
-        {resultErrors.length > 0 && (
-          <div
-            ref={errorSectionRef}
-            className="overflow-hidden rounded-xl border border-border bg-card"
-          >
-            <div className="flex items-center justify-between border-b border-border bg-muted/30 px-4 py-3">
-              <h2 className="text-sm font-semibold text-foreground">
-                Detail Error ({resultErrors.length})
-              </h2>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleDownloadErrorReport}
-              >
-                <Download className="size-4" />
-                Download Error Report
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center">
+              {hasAnyErrors && (
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    errorSectionRef.current?.scrollIntoView({
+                      behavior: "smooth",
+                    })
+                  }
+                >
+                  <XCircle className="size-4" />
+                  Lihat Detail Error
+                </Button>
+              )}
+              <Button render={<Link href={ROUTES.EMPLOYEES} />}>
+                <Users className="size-4" />
+                Lihat Data Karyawan
               </Button>
+              <Button variant="outline" onClick={handleResetAll}>
+                <RotateCcw className="size-4" />
+                Import Lagi
+              </Button>
+              {importLogId && !isRolledBack && (
+                <Button
+                  variant="destructive"
+                  onClick={() => setIsRollbackConfirmOpen(true)}
+                  disabled={rollbackMutation.isPending}
+                >
+                  {rollbackMutation.isPending ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <RotateCcw className="size-4" />
+                  )}
+                  Rollback Import
+                </Button>
+              )}
+              {isRolledBack && (
+                <Button variant="outline" disabled>
+                  <Check className="size-4" />
+                  Import sudah di-rollback
+                </Button>
+              )}
             </div>
-            <div className="max-h-[500px] overflow-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/30 hover:bg-muted/30">
-                    <TableHead className="w-[80px] text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      Row
-                    </TableHead>
-                    <TableHead className="w-[140px] text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      NIP
-                    </TableHead>
-                    <TableHead className="min-w-[200px] text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      Nama
-                    </TableHead>
-                    <TableHead className="min-w-[300px] text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      Error
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {resultErrors.map((e) => (
-                    <TableRow key={`err-${e.rowNumber}`} className="bg-red-50/40">
-                      <TableCell className="text-sm tabular-nums text-muted-foreground">
-                        {e.rowNumber}
-                      </TableCell>
-                      <TableCell className="font-mono text-sm">
-                        {e.nip ?? (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-sm font-medium text-foreground">
-                        {e.nama_lengkap ?? (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-sm text-red-700">
-                        {e.error}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+
+            {/* Error details */}
+            {hasAnyErrors && (
+              <div
+                ref={errorSectionRef}
+                className="overflow-hidden rounded-xl border border-border bg-card"
+              >
+                <div className="flex items-center justify-between border-b border-border bg-muted/30 px-4 py-3">
+                  <h2 className="text-sm font-semibold text-foreground">
+                    Detail Error
+                  </h2>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleDownloadErrorReport}
+                  >
+                    <Download className="size-4" />
+                    <span className="hidden sm:inline">Download</span>
+                  </Button>
+                </div>
+                <div className="max-h-[400px] space-y-1 overflow-auto p-3">
+                  {batchLogs
+                    .filter((l) => l.errorMessages.length > 0)
+                    .flatMap((l) =>
+                      l.errorMessages.map((msg, i) => (
+                        <p
+                          key={`${l.index}-${i}`}
+                          className="text-sm text-red-700"
+                        >
+                          {msg}
+                        </p>
+                      )),
+                    )}
+                </div>
+              </div>
+            )}
+
+            {/* Batch summary */}
+            <div className="rounded-xl border border-border bg-card">
+              <div className="border-b border-border bg-muted/30 px-4 py-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Log Batch
+                </p>
+              </div>
+              <div className="max-h-[300px] space-y-1.5 overflow-y-auto p-3">
+                {batchLogs.map((log) => (
+                  <div
+                    key={log.index}
+                    className="flex items-start gap-2 text-sm"
+                  >
+                    {log.status === "completed" ? (
+                      <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-green-600" />
+                    ) : (
+                      <XCircle className="mt-0.5 size-3.5 shrink-0 text-red-500" />
+                    )}
+                    <span className="text-muted-foreground">
+                      Batch {log.index + 1}: {log.success} berhasil
+                      {log.errors > 0 ? `, ${log.errors} gagal` : ""} (
+                      {formatDurationMs(log.duration)})
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          </>
         )}
+
+        {/* Rollback confirm dialog */}
+        <AlertDialog
+          open={isRollbackConfirmOpen}
+          onOpenChange={setIsRollbackConfirmOpen}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Konfirmasi Rollback</AlertDialogTitle>
+              <AlertDialogDescription>
+                Yakin ingin membatalkan import ini? Data karyawan yang
+                di-import akan dihapus dan data yang di-update akan
+                dikembalikan ke kondisi semula. Akun login yang dibuat otomatis
+                juga akan dihapus.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Batal</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleRollback();
+                }}
+              >
+                Ya, Rollback
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     );
   }
 
-  // ==========================================================================
-  // Step 3 — Progress Import (sedang berjalan)
-  // ==========================================================================
-  if (importExecute.isPending) {
+  // ======================================================================
+  // STEP 3: Preview & Validasi
+  // ======================================================================
+  if (step === 3 && preview) {
     return (
       <div className="space-y-6">
-        <StepIndicator currentStep={3} />
-        <div className="flex min-h-[50vh] items-center justify-center">
-        <div className="w-full max-w-md rounded-xl border border-border bg-card p-8 text-center">
-          <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-primary/10">
-            <Loader2 className="size-8 animate-spin text-primary" />
-          </div>
-          <h2 className="mt-4 text-xl font-bold text-foreground">
-            Sedang Mengimport Data
-          </h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Mohon tunggu, proses ini dapat memakan waktu beberapa menit untuk
-            data dalam jumlah besar.
-          </p>
-          <div className="mt-6 overflow-hidden rounded-full bg-muted">
-            <div className="h-2 w-full animate-pulse bg-primary" />
-          </div>
-          <p className="mt-4 text-xs text-muted-foreground">
-            Jangan tutup atau refresh halaman ini sampai proses selesai.
-          </p>
-        </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ==========================================================================
-  // Step 2 — Preview & Validasi
-  // ==========================================================================
-  if (preview) {
-    return (
-      <div className="space-y-6">
-        <StepIndicator currentStep={2} />
+        <StepIndicator currentStep={3} completedSteps={completedSteps} />
 
         <div className="space-y-1">
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-foreground sm:text-3xl">
-            <FileSpreadsheet className="size-7 text-primary" />
-            Preview Import Data
+          <h1 className="text-xl font-bold text-foreground sm:text-2xl">
+            Preview Data
           </h1>
           <p className="text-sm text-muted-foreground">
-            Periksa hasil validasi sebelum melanjutkan import.
+            Review data sebelum import. Perbaiki error jika ada.
           </p>
         </div>
 
         {/* Summary cards */}
-        <div className="flex flex-wrap gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <SummaryCard
-            label="Total Baris"
-            value={preview.summary.totalRows}
-            tone="blue"
-          />
-          <SummaryCard
+            icon={<CheckCircle2 className="size-4 text-green-600" />}
             label="Valid"
-            value={preview.summary.validCount}
+            value={preview.summary.validCount + preview.summary.warningCount}
             tone="green"
           />
           <SummaryCard
-            label="Warning"
-            value={preview.summary.warningCount}
-            tone="amber"
-          />
-          <SummaryCard
+            icon={<XCircle className="size-4 text-red-600" />}
             label="Error"
             value={preview.summary.errorCount}
             tone="red"
           />
           <SummaryCard
-            label="Baru (Insert)"
-            value={preview.summary.newCount}
-            tone="green"
-          />
-          <SummaryCard
+            icon={<RotateCcw className="size-4 text-blue-600" />}
             label="Update"
             value={preview.summary.updateCount}
             tone="blue"
           />
           <SummaryCard
-            label="Dilewati"
-            value={preview.summary.skippedCount}
-            tone="gray"
+            icon={<UserPlus className="size-4 text-emerald-600" />}
+            label="Baru"
+            value={preview.summary.newCount}
+            tone="emerald"
           />
         </div>
 
         {/* Filter tabs */}
         <Tabs
           value={filterTab}
-          onValueChange={(next) => {
-            setFilterTab(next as FilterTab);
+          onValueChange={(v) => {
+            setFilterTab(v as FilterTab);
             setPreviewPage(1);
             setExpandedRows(new Set());
           }}
         >
-          <TabsList className="h-auto w-full justify-start gap-1 bg-muted/60 p-1 sm:w-auto">
-            <TabsTrigger value="all" className="h-9 px-4">
-              Semua ({preview.summary.totalRows})
-            </TabsTrigger>
-            <TabsTrigger value="valid" className="h-9 px-4">
-              Valid ({preview.summary.validCount})
-            </TabsTrigger>
-            <TabsTrigger value="warning" className="h-9 px-4">
-              Warning ({preview.summary.warningCount})
-            </TabsTrigger>
-            <TabsTrigger value="error" className="h-9 px-4">
-              Error ({preview.summary.errorCount})
-            </TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto">
+            <TabsList className="h-auto w-auto justify-start gap-1 bg-muted/60 p-1">
+              <TabsTrigger
+                value="all"
+                className="h-8 px-3 text-xs sm:h-9 sm:px-4 sm:text-sm"
+              >
+                Semua ({preview.summary.totalRows})
+              </TabsTrigger>
+              <TabsTrigger
+                value="error"
+                className="h-8 px-3 text-xs sm:h-9 sm:px-4 sm:text-sm"
+              >
+                Error ({preview.summary.errorCount})
+              </TabsTrigger>
+              <TabsTrigger
+                value="update"
+                className="h-8 px-3 text-xs sm:h-9 sm:px-4 sm:text-sm"
+              >
+                Update ({preview.summary.updateCount})
+              </TabsTrigger>
+              <TabsTrigger
+                value="new"
+                className="h-8 px-3 text-xs sm:h-9 sm:px-4 sm:text-sm"
+              >
+                Baru ({preview.summary.newCount})
+              </TabsTrigger>
+            </TabsList>
+          </div>
         </Tabs>
 
         {/* Preview table */}
@@ -697,34 +1148,29 @@ export default function ImportPage() {
                   <TableHead className="w-[60px] text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Row
                   </TableHead>
-                  <TableHead className="w-[80px] text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Status
-                  </TableHead>
-                  <TableHead className="w-[130px] text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <TableHead className="w-[120px] text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     NIP
                   </TableHead>
-                  <TableHead className="min-w-[200px] text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Nama Lengkap
+                  <TableHead className="min-w-[160px] text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Nama
                   </TableHead>
-                  <TableHead className="w-[150px] text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Unit Organisasi
-                  </TableHead>
-                  <TableHead className="min-w-[180px] text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Jabatan
-                  </TableHead>
-                  <TableHead className="w-[150px] text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <TableHead className="w-[130px] text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Status Pegawai
                   </TableHead>
-                  <TableHead className="w-[80px] text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <TableHead className="w-[130px] text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Unit
+                  </TableHead>
+                  <TableHead className="w-[70px] text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Aksi
                   </TableHead>
+                  <TableHead className="w-[40px]" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {visibleRows.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={8}
+                      colSpan={7}
                       className="py-12 text-center text-sm text-muted-foreground"
                     >
                       Tidak ada data dengan filter ini.
@@ -737,70 +1183,67 @@ export default function ImportPage() {
                       row.validation.errors.length > 0 ||
                       row.validation.warnings.length > 0;
                     const rowBg =
-                      row.status === "valid"
-                        ? "bg-green-50/40"
-                        : row.status === "warning"
-                          ? "bg-amber-50/50"
-                          : "bg-red-50/50";
+                      row.status === "error"
+                        ? "bg-red-50/50"
+                        : row.isExistingNip
+                          ? "bg-blue-50/30"
+                          : row.data.nama_lengkap
+                            ? "bg-green-50/30"
+                            : "bg-gray-50/30";
                     return (
-                      <Fragment key={`row-${row.rowNumber}`}>
+                      <Fragment key={row.rowNumber}>
                         <TableRow
                           className={cn(rowBg, "hover:bg-opacity-80")}
                         >
-                          <TableCell className="w-[60px] text-sm text-muted-foreground tabular-nums">
+                          <TableCell className="text-sm tabular-nums text-muted-foreground">
                             {row.rowNumber}
                           </TableCell>
-                          <TableCell className="w-[80px]">
-                            <div className="flex items-center gap-1.5">
-                              <StatusIcon status={row.status} />
-                              {row.isExistingNip && (
-                                <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-blue-700">
-                                  Update
-                                </span>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="w-[130px] font-mono text-sm">
+                          <TableCell className="font-mono text-sm">
                             {row.data.nip ?? (
-                              <span className="text-muted-foreground">-</span>
+                              <span className="text-muted-foreground">
+                                -
+                              </span>
                             )}
                           </TableCell>
-                          <TableCell className="min-w-[200px] text-sm font-medium text-foreground">
+                          <TableCell className="text-sm font-medium text-foreground">
                             {row.data.nama_lengkap ?? (
-                              <span className="text-muted-foreground">-</span>
+                              <span className="text-muted-foreground">
+                                -
+                              </span>
                             )}
                           </TableCell>
-                          <TableCell className="w-[150px] text-sm">
-                            {row.data.unit_organisasi ?? (
-                              <span className="text-muted-foreground">-</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="min-w-[180px] truncate text-sm">
-                            {row.data.nama_jabatan ?? (
-                              <span className="text-muted-foreground">-</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="w-[150px] text-sm">
+                          <TableCell className="text-sm">
                             {row.data.status_pegawai ?? (
-                              <span className="text-muted-foreground">-</span>
+                              <span className="text-muted-foreground">
+                                -
+                              </span>
                             )}
                           </TableCell>
-                          <TableCell className="w-[80px]">
+                          <TableCell className="text-sm">
+                            {row.data.unit_organisasi ?? (
+                              <span className="text-muted-foreground">
+                                -
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <ActionBadge row={row} />
+                          </TableCell>
+                          <TableCell>
                             {hasDetail && (
                               <button
                                 type="button"
                                 onClick={() =>
                                   toggleRowExpanded(row.rowNumber)
                                 }
-                                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-                                aria-label="Lihat detail"
+                                className="inline-flex items-center text-muted-foreground hover:text-foreground"
+                                aria-label="Detail"
                               >
                                 {isExpanded ? (
                                   <ChevronDown className="size-4" />
                                 ) : (
                                   <ChevronRight className="size-4" />
                                 )}
-                                Detail
                               </button>
                             )}
                           </TableCell>
@@ -809,7 +1252,7 @@ export default function ImportPage() {
                           <TableRow
                             className={cn(rowBg, "hover:bg-opacity-80")}
                           >
-                            <TableCell colSpan={8} className="px-6 py-3">
+                            <TableCell colSpan={7} className="px-6 py-3">
                               <div className="space-y-2 text-sm">
                                 {row.validation.errors.length > 0 && (
                                   <div>
@@ -817,9 +1260,9 @@ export default function ImportPage() {
                                       Error
                                     </p>
                                     <ul className="mt-1 space-y-0.5">
-                                      {row.validation.errors.map((e, idx) => (
+                                      {row.validation.errors.map((e, i) => (
                                         <li
-                                          key={`e-${idx}`}
+                                          key={i}
                                           className="text-red-700"
                                         >
                                           <span className="font-medium">
@@ -838,9 +1281,9 @@ export default function ImportPage() {
                                     </p>
                                     <ul className="mt-1 space-y-0.5">
                                       {row.validation.warnings.map(
-                                        (w, idx) => (
+                                        (w, i) => (
                                           <li
-                                            key={`w-${idx}`}
+                                            key={i}
                                             className="text-amber-700"
                                           >
                                             <span className="font-medium">
@@ -866,8 +1309,7 @@ export default function ImportPage() {
           </div>
         </div>
 
-        {/* Pagination */}
-        {filteredRows.length > 0 && (
+        {filteredRows.length > PREVIEW_PAGE_SIZE && (
           <Pagination
             page={safePage}
             limit={PREVIEW_PAGE_SIZE}
@@ -879,7 +1321,7 @@ export default function ImportPage() {
 
         {/* Action buttons */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <Button variant="outline" onClick={handleBackToUpload}>
+          <Button variant="outline" onClick={handleBackToMapping}>
             <ArrowLeft className="size-4" />
             Kembali
           </Button>
@@ -917,9 +1359,9 @@ export default function ImportPage() {
             <AlertDialogFooter>
               <AlertDialogCancel>Batal</AlertDialogCancel>
               <AlertDialogAction
-                onClick={(event) => {
-                  event.preventDefault();
-                  handleConfirmImport();
+                onClick={(e) => {
+                  e.preventDefault();
+                  startBatchImport();
                 }}
               >
                 Import Sekarang
@@ -931,44 +1373,233 @@ export default function ImportPage() {
     );
   }
 
-  // ==========================================================================
-  // Step 1 — Upload File
-  // ==========================================================================
+  // ======================================================================
+  // STEP 2: Column Mapping
+  // ======================================================================
+  if (step === 2 && preview) {
+    return (
+      <div className="space-y-6">
+        <StepIndicator currentStep={2} completedSteps={completedSteps} />
+
+        <div className="space-y-1">
+          <h1 className="text-xl font-bold text-foreground sm:text-2xl">
+            Mapping Kolom
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Pastikan kolom di file Excel Anda sesuai dengan field database.
+          </p>
+        </div>
+
+        {isMobile ? (
+          /* ---- Mobile: Card view ---- */
+          <div className="space-y-2.5">
+            {preview.detectedColumns.map((col) => {
+              const currentField = columnMapping.get(col.excelHeader) ?? null;
+              const confidence = getEffectiveConfidence(col, currentField);
+              const usedByOthers = new Set(
+                Array.from(columnMapping.entries())
+                  .filter(
+                    ([key, val]) =>
+                      key !== col.excelHeader && val !== null,
+                  )
+                  .map(([, val]) => val),
+              );
+
+              return (
+                <div
+                  key={col.excelHeader}
+                  className="space-y-2 rounded-lg border border-border bg-card p-3"
+                >
+                  <div className="flex items-center justify-between">
+                    <p className="truncate text-sm font-medium text-foreground">
+                      {col.excelHeader.split(/\r?\n/)[0]}
+                    </p>
+                    <div className="flex items-center gap-1.5">
+                      <ConfidenceIcon confidence={confidence} />
+                      <ConfidenceLabel confidence={confidence} />
+                    </div>
+                  </div>
+                  <select
+                    className="h-8 w-full rounded-lg border border-input bg-background px-2 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/50"
+                    value={currentField ?? "__skip__"}
+                    onChange={(e) =>
+                      handleMappingChange(col.excelHeader, e.target.value)
+                    }
+                  >
+                    <option value="__skip__">Abaikan kolom ini</option>
+                    {DB_FIELD_OPTIONS.filter(
+                      (f) =>
+                        !usedByOthers.has(f.value) ||
+                        f.value === currentField,
+                    ).map((f) => (
+                      <option key={f.value} value={f.value}>
+                        {f.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          /* ---- Desktop: Table view ---- */
+          <div className="overflow-hidden rounded-xl border border-border bg-card">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/30 hover:bg-muted/30">
+                    <TableHead className="min-w-[200px] text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Kolom Excel
+                    </TableHead>
+                    <TableHead className="w-[40px] text-center text-muted-foreground">
+                      &rarr;
+                    </TableHead>
+                    <TableHead className="min-w-[220px] text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Field Database
+                    </TableHead>
+                    <TableHead className="w-[100px] text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Status
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {preview.detectedColumns.map((col) => {
+                    const currentField =
+                      columnMapping.get(col.excelHeader) ?? null;
+                    const confidence = getEffectiveConfidence(
+                      col,
+                      currentField,
+                    );
+                    const usedByOthers = new Set(
+                      Array.from(columnMapping.entries())
+                        .filter(
+                          ([key, val]) =>
+                            key !== col.excelHeader && val !== null,
+                        )
+                        .map(([, val]) => val),
+                    );
+
+                    return (
+                      <TableRow key={col.excelHeader}>
+                        <TableCell className="text-sm font-medium text-foreground">
+                          {col.excelHeader.split(/\r?\n/)[0]}
+                        </TableCell>
+                        <TableCell className="text-center text-muted-foreground">
+                          &rarr;
+                        </TableCell>
+                        <TableCell>
+                          <select
+                            className="h-8 w-full rounded-lg border border-input bg-background px-2 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/50"
+                            value={currentField ?? "__skip__"}
+                            onChange={(e) =>
+                              handleMappingChange(
+                                col.excelHeader,
+                                e.target.value,
+                              )
+                            }
+                          >
+                            <option value="__skip__">
+                              Abaikan kolom ini
+                            </option>
+                            {DB_FIELD_OPTIONS.filter(
+                              (f) =>
+                                !usedByOthers.has(f.value) ||
+                                f.value === currentField,
+                            ).map((f) => (
+                              <option key={f.value} value={f.value}>
+                                {f.label}
+                              </option>
+                            ))}
+                          </select>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1.5">
+                            <ConfidenceIcon confidence={confidence} />
+                            <ConfidenceLabel confidence={confidence} />
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        )}
+
+        {/* Summary */}
+        <p className="text-sm text-muted-foreground">
+          Terdeteksi:{" "}
+          <span className="font-semibold text-foreground">
+            {autoMappedCount}/{preview.detectedColumns.length}
+          </span>{" "}
+          kolom otomatis.
+          {unmappedCount > 0 && (
+            <>
+              {" "}
+              <span className="font-semibold text-amber-600">
+                {unmappedCount}
+              </span>{" "}
+              kolom perlu mapping manual.
+            </>
+          )}
+        </p>
+
+        {!requiredFieldsMapped && (
+          <div className="flex gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+            <AlertTriangle className="mt-0.5 size-5 shrink-0 text-red-600" />
+            <p className="text-sm text-red-700">
+              Field wajib <strong>NIP</strong> dan{" "}
+              <strong>Nama Lengkap</strong> harus di-mapping sebelum
+              melanjutkan.
+            </p>
+          </div>
+        )}
+
+        {/* Buttons */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <Button variant="outline" onClick={handleBackToUpload}>
+            <ArrowLeft className="size-4" />
+            Kembali
+          </Button>
+          <Button
+            disabled={!requiredFieldsMapped}
+            onClick={() => {
+              setStep(3);
+              setFilterTab("all");
+              setPreviewPage(1);
+              setExpandedRows(new Set());
+            }}
+          >
+            Lanjut ke Preview
+            <ArrowRight className="size-4" />
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // ======================================================================
+  // STEP 1: Upload File
+  // ======================================================================
   return (
     <div className="space-y-6">
-      <StepIndicator currentStep={1} />
+      <StepIndicator currentStep={1} completedSteps={completedSteps} />
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-foreground sm:text-3xl">
-            <FileSpreadsheet className="size-7 text-primary" />
-            Import Data Karyawan
+          <h1 className="flex items-center gap-2 text-xl font-bold text-foreground sm:text-2xl">
+            <FileSpreadsheet className="size-6 text-primary sm:size-7" />
+            Upload File Excel / CSV
           </h1>
           <p className="text-sm text-muted-foreground">
-            Upload file Excel (.xlsx) atau CSV (.csv) untuk import data
-            karyawan secara massal.
+            Pilih atau seret file untuk memulai import data karyawan.
           </p>
         </div>
-        <Button variant="outline" render={<Link href="/import/logs" />}>
-          <History className="size-4" />
-          Riwayat Import
-        </Button>
-      </div>
-
-      <InfoAlert />
-
-      <div className="rounded-xl border border-border bg-card p-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h2 className="text-base font-semibold text-foreground">
-              Unduh Template
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Gunakan template resmi untuk memastikan format data sesuai.
-            </p>
-          </div>
+        <div className="flex items-center gap-2">
           <Button
             variant="outline"
+            size="sm"
             onClick={() => downloadTemplate.mutate()}
             disabled={downloadTemplate.isPending}
           >
@@ -977,96 +1608,104 @@ export default function ImportPage() {
             ) : (
               <Download className="size-4" />
             )}
-            Download Template
+            <span className="hidden sm:inline">Download Template</span>
+            <span className="sm:hidden">Template</span>
           </Button>
-        </div>
-      </div>
-
-      <div className="rounded-xl border border-border bg-card p-6">
-        <h2 className="text-base font-semibold text-foreground">
-          Upload File
-        </h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Tarik file ke area di bawah atau klik untuk memilih.
-        </p>
-
-        <div
-          {...getRootProps()}
-          className={cn(
-            "mt-4 flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-6 py-12 transition-colors",
-            isDragActive
-              ? "border-primary bg-primary/5"
-              : "border-border bg-muted/30 hover:border-primary/50 hover:bg-muted/50",
-          )}
-        >
-          <input {...getInputProps()} />
-          <div className="flex size-16 items-center justify-center rounded-full bg-primary/10">
-            <Upload className="size-8 text-primary" />
-          </div>
-          <div className="text-center">
-            <p className="text-base font-semibold text-foreground">
-              {isDragActive
-                ? "Lepaskan file di sini"
-                : "Seret file ke sini atau klik untuk memilih"}
-            </p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Format: .xlsx, .csv (Maks. 10MB)
-            </p>
-          </div>
-        </div>
-
-        {file && (
-          <div className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 px-4 py-3">
-            <div className="flex items-center gap-3 overflow-hidden">
-              <FileSpreadsheet className="size-5 shrink-0 text-primary" />
-              <div className="overflow-hidden">
-                <p className="truncate text-sm font-medium text-foreground">
-                  {file.name}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {formatBytes(file.size)}
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              aria-label="Hapus file"
-              onClick={() => setFile(null)}
-              disabled={importPreview.isPending}
-              className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
-            >
-              <X className="size-4" />
-            </button>
-          </div>
-        )}
-
-        <div className="mt-6 flex justify-end">
           <Button
-            disabled={!file || importPreview.isPending}
-            onClick={handleProcessFile}
+            variant="outline"
+            size="sm"
+            render={<Link href="/import/logs" />}
           >
-            {importPreview.isPending ? (
-              <>
-                <Loader2 className="size-4 animate-spin" />
-                Memproses file...
-              </>
-            ) : (
-              <>
-                <Upload className="size-4" />
-                Proses File
-              </>
-            )}
+            <History className="size-4" />
+            <span className="hidden sm:inline">Riwayat Import</span>
+            <span className="sm:hidden">Riwayat</span>
           </Button>
         </div>
+      </div>
 
-        {importPreview.isError && (
-          <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-            {importPreview.error instanceof Error
-              ? importPreview.error.message
-              : "Gagal memproses file"}
-          </div>
+      {/* Dropzone */}
+      <div
+        {...getRootProps()}
+        className={cn(
+          "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-6 py-12 transition-colors",
+          importPreview.isPending && "pointer-events-none opacity-60",
+          isDragActive
+            ? "border-primary bg-primary/5"
+            : "border-border bg-muted/30 hover:border-primary/50 hover:bg-muted/50",
+        )}
+      >
+        <input {...getInputProps()} disabled={importPreview.isPending} />
+        {importPreview.isPending ? (
+          <>
+            <div className="flex size-16 items-center justify-center rounded-full bg-primary/10">
+              <Loader2 className="size-8 animate-spin text-primary" />
+            </div>
+            <div className="text-center">
+              <p className="text-base font-semibold text-foreground">
+                Memproses file...
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Validasi dan analisis kolom sedang berjalan.
+              </p>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="flex size-16 items-center justify-center rounded-full bg-primary/10">
+              <FileSpreadsheet className="size-8 text-primary" />
+            </div>
+            <div className="text-center">
+              <p className="text-base font-semibold text-foreground">
+                {isDragActive
+                  ? "Lepaskan file di sini"
+                  : "Seret file ke sini atau klik untuk memilih"}
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Format: .xlsx, .csv (Maks. 10MB)
+              </p>
+            </div>
+          </>
         )}
       </div>
+
+      {/* Selected file info */}
+      {file && !importPreview.isPending && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 px-4 py-3">
+          <div className="flex items-center gap-3 overflow-hidden">
+            <FileSpreadsheet className="size-5 shrink-0 text-primary" />
+            <div className="overflow-hidden">
+              <p className="truncate text-sm font-medium text-foreground">
+                {file.name}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {formatBytes(file.size)}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            aria-label="Hapus file"
+            onClick={() => {
+              setFile(null);
+              importPreview.reset();
+            }}
+            className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Error */}
+      {importPreview.isError && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          {importPreview.error instanceof Error
+            ? importPreview.error.message
+            : "Gagal memproses file"}
+        </div>
+      )}
+
+      <InfoAlert />
     </div>
   );
 }

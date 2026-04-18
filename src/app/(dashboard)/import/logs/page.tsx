@@ -1,8 +1,10 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
+  Ban,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
@@ -10,10 +12,21 @@ import {
   History,
   Loader2,
   RefreshCw,
+  RotateCcw,
   XCircle,
 } from "lucide-react";
 
 import { EmptyState } from "@/components/shared/empty-state";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 
 import { Pagination } from "@/components/shared/pagination";
@@ -26,7 +39,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useImportLogs, type ImportLogItem } from "@/hooks/use-import";
+import {
+  useImportLogs,
+  useImportRollback,
+  type ImportLogItem,
+} from "@/hooks/use-import";
 import { formatDateTimeWITA } from "@/lib/utils/date";
 import { cn } from "@/lib/utils";
 
@@ -73,6 +90,14 @@ function StatusBadge({ status }: { status: string }) {
       </span>
     );
   }
+  if (status === "rolled_back") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-600">
+        <Ban className="size-3" />
+        Dibatalkan
+      </span>
+    );
+  }
   return (
     <span className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-0.5 text-xs font-semibold text-gray-700">
       <AlertCircle className="size-3" />
@@ -86,7 +111,7 @@ function LoadingRows() {
     <>
       {Array.from({ length: 8 }).map((_, i) => (
         <TableRow key={`sk-${i}`}>
-          <TableCell colSpan={10} className="py-3">
+          <TableCell colSpan={11} className="py-3">
             <Skeleton className="h-5 w-full" />
           </TableCell>
         </TableRow>
@@ -99,9 +124,17 @@ interface ImportLogRowProps {
   log: ImportLogItem;
   isExpanded: boolean;
   onToggle: () => void;
+  onRollbackClick: (log: ImportLogItem) => void;
+  isRollbackPending: boolean;
 }
 
-function ImportLogRow({ log, isExpanded, onToggle }: ImportLogRowProps) {
+function ImportLogRow({
+  log,
+  isExpanded,
+  onToggle,
+  onRollbackClick,
+  isRollbackPending,
+}: ImportLogRowProps) {
   const errorDetails = Array.isArray(log.error_details)
     ? log.error_details
     : [];
@@ -157,10 +190,32 @@ function ImportLogRow({ log, isExpanded, onToggle }: ImportLogRowProps) {
         <TableCell className="w-[140px] text-sm text-muted-foreground">
           {formatDuration(log.started_at, log.completed_at)}
         </TableCell>
+        <TableCell className="w-[120px]">
+          {log.status === "completed" ? (
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={isRollbackPending}
+              onClick={(e) => {
+                e.stopPropagation();
+                onRollbackClick(log);
+              }}
+            >
+              {isRollbackPending ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <RotateCcw className="size-3.5" />
+              )}
+              Rollback
+            </Button>
+          ) : (
+            <span className="text-xs text-muted-foreground">-</span>
+          )}
+        </TableCell>
       </TableRow>
       {isExpanded && hasErrors && (
         <TableRow className="bg-red-50/30 hover:bg-red-50/30">
-          <TableCell colSpan={10} className="px-6 py-4">
+          <TableCell colSpan={11} className="px-6 py-4">
             <div className="space-y-2">
               <p className="text-xs font-semibold uppercase tracking-wide text-red-700">
                 Detail Error ({errorDetails.length})
@@ -221,6 +276,12 @@ function ImportLogRow({ log, isExpanded, onToggle }: ImportLogRowProps) {
 export default function ImportLogsPage() {
   const [page, setPage] = useState(1);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [rollbackTarget, setRollbackTarget] = useState<ImportLogItem | null>(
+    null,
+  );
+
+  const queryClient = useQueryClient();
+  const rollbackMutation = useImportRollback();
 
   const { data, isLoading, isError, error, refetch, isFetching } =
     useImportLogs({
@@ -235,6 +296,20 @@ export default function ImportLogsPage() {
     () => logs.some((log) => log.status === "processing"),
     [logs],
   );
+
+  function handleConfirmRollback() {
+    if (!rollbackTarget) return;
+    const target = rollbackTarget;
+    setRollbackTarget(null);
+    rollbackMutation.mutate(
+      { importLogId: target.id },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: ["import-logs"] });
+        },
+      },
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -303,6 +378,9 @@ export default function ImportLogsPage() {
                 <TableHead className="w-[140px] text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Durasi
                 </TableHead>
+                <TableHead className="w-[120px] text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Aksi
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -311,7 +389,7 @@ export default function ImportLogsPage() {
               ) : isError ? (
                 <TableRow>
                   <TableCell
-                    colSpan={10}
+                    colSpan={11}
                     className="py-12 text-center text-sm text-destructive"
                   >
                     {error instanceof Error
@@ -321,7 +399,7 @@ export default function ImportLogsPage() {
                 </TableRow>
               ) : logs.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={10} className="p-0">
+                  <TableCell colSpan={11} className="p-0">
                     <EmptyState
                       icon={FileSpreadsheet}
                       title="Belum ada riwayat import"
@@ -337,6 +415,11 @@ export default function ImportLogsPage() {
                     isExpanded={expandedId === log.id}
                     onToggle={() =>
                       setExpandedId((prev) => (prev === log.id ? null : log.id))
+                    }
+                    onRollbackClick={setRollbackTarget}
+                    isRollbackPending={
+                      rollbackMutation.isPending &&
+                      rollbackMutation.variables?.importLogId === log.id
                     }
                   />
                 ))
@@ -355,6 +438,39 @@ export default function ImportLogsPage() {
           onPageChange={setPage}
         />
       )}
+
+      <AlertDialog
+        open={rollbackTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setRollbackTarget(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Konfirmasi Rollback</AlertDialogTitle>
+            <AlertDialogDescription>
+              Yakin ingin membatalkan import{" "}
+              <span className="font-semibold text-foreground">
+                {rollbackTarget?.file_name}
+              </span>
+              ? Data karyawan yang di-import akan dihapus, data yang di-update
+              akan dikembalikan ke kondisi semula, dan akun login yang dibuat
+              otomatis juga akan dihapus. Tindakan ini tidak dapat dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleConfirmRollback();
+              }}
+            >
+              Ya, Rollback
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
