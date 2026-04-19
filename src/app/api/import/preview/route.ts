@@ -205,6 +205,30 @@ export async function POST(
     // Detect column mapping
     const detectedColumns = detectColumnMapping(parsed.headers);
 
+    // Detect duplicates within the file itself (not against DB)
+    const nipOccurrences: Record<string, number[]> = {};
+    const nikOccurrences: Record<string, number[]> = {};
+    for (const row of result.rows) {
+      if (row.data.nip) {
+        const nip = row.data.nip;
+        if (!nipOccurrences[nip]) nipOccurrences[nip] = [];
+        nipOccurrences[nip].push(row.rowNumber);
+      }
+      if (row.data.nik) {
+        const nik = row.data.nik;
+        if (!nikOccurrences[nik]) nikOccurrences[nik] = [];
+        nikOccurrences[nik].push(row.rowNumber);
+      }
+    }
+
+    const duplicateNipInFile = Object.entries(nipOccurrences)
+      .filter(([, rowsArr]) => rowsArr.length > 1)
+      .map(([value, rowsArr]) => ({ value, rows: rowsArr }));
+
+    const duplicateNikInFile = Object.entries(nikOccurrences)
+      .filter(([, rowsArr]) => rowsArr.length > 1)
+      .map(([value, rowsArr]) => ({ value, rows: rowsArr }));
+
     const enhancedResult: EnhancedImportPreviewResult = {
       ...result,
       duplicateNips,
@@ -213,6 +237,10 @@ export async function POST(
       newCount: newNips.length,
       enhancedRows,
       detectedColumns,
+      warnings: {
+        duplicateNipInFile,
+        duplicateNikInFile,
+      },
     };
 
     return NextResponse.json<ApiResponse<EnhancedImportPreviewResult>>({

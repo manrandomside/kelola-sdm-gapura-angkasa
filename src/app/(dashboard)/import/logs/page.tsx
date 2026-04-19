@@ -239,29 +239,42 @@ function ImportLogRow({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {errorDetails.map((e, idx) => (
-                      <TableRow
-                        key={`err-${log.id}-${idx}`}
-                        className="hover:bg-red-50/40"
-                      >
-                        <TableCell className="text-sm tabular-nums text-muted-foreground">
-                          {e.rowNumber}
-                        </TableCell>
-                        <TableCell className="font-mono text-sm">
-                          {e.nip ?? (
-                            <span className="text-muted-foreground">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          {e.nama_lengkap ?? (
-                            <span className="text-muted-foreground">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-sm text-red-700">
-                          {e.error}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {errorDetails.map((raw, idx) => {
+                      const e = raw as unknown as Record<string, unknown>;
+                      const rowNumber = e.rowNumber as number | undefined;
+                      const nip = (e.nip as string | null | undefined) ?? null;
+                      const nama =
+                        (e.namaLengkap as string | null | undefined) ??
+                        (e.nama_lengkap as string | null | undefined) ??
+                        null;
+                      const message =
+                        (e.message as string | undefined) ??
+                        (e.error as string | undefined) ??
+                        "-";
+                      return (
+                        <TableRow
+                          key={`err-${log.id}-${idx}`}
+                          className="hover:bg-red-50/40"
+                        >
+                          <TableCell className="text-sm tabular-nums text-muted-foreground">
+                            {rowNumber}
+                          </TableCell>
+                          <TableCell className="font-mono text-sm">
+                            {nip ?? (
+                              <span className="text-muted-foreground">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {nama ?? (
+                              <span className="text-muted-foreground">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-sm text-red-700">
+                            {message}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>

@@ -581,6 +581,16 @@ src/
 - AI Assistant: `min-w-0 overflow-hidden` on chat container, `break-words` on message bubbles, `.chat-content` CSS for pre/code/table overflow
 - Global CSS: `overflow-x: hidden` on html/body, `.chat-content` styles for code blocks and tables
 
+### Enhanced Error Reporting Import (2026-04-19)
+- Helper `src/lib/utils/parse-db-error.ts` — parse raw Postgres/auth error menjadi pesan user-friendly dengan 8 kategori: `DUPLICATE_NIK`, `DUPLICATE_EMAIL`, `DUPLICATE_NIP`, `INVALID_FORMAT`, `MISSING_FIELD`, `INVALID_ENUM`, `AUTH_ERROR`, `UNKNOWN`. Export `ERROR_CODE_LABEL` map (Indonesia) + `getErrorLabel(code)`.
+- `ParsedError` struktur: `{ code, field?, value?, message, detail?, suggestion? }` — `message` singkat untuk UI, `detail` penjelasan, `suggestion` tindakan perbaikan.
+- `/api/import/execute-batch` memanggil `parseDatabaseError(err, rowData)` di setiap catch per-row. `BatchError` yang dikirim ke FE: `{ rowNumber, nip, namaLengkap, errorCode, field, value, message, detail?, suggestion? }` — dump SQL tidak lagi bocor ke user.
+- `/api/import/preview` mendeteksi duplikat NIP & NIK **di dalam file CSV** sendiri (bukan hanya vs DB). Result `warnings.duplicateNipInFile` / `duplicateNikInFile` berbentuk `{ value, rows: number[] }[]`.
+- UI Step 3 Preview: komponen `DuplicateInFileWarning` menampilkan alert amber + `<details>` daftar NIP/NIK dan baris tempatnya muncul (maks 10 preview).
+- UI Step 4 Import log per batch menampilkan status jelas: "Batch N: X berhasil" / "Batch N: X berhasil, Y gagal" / "Batch N: Gagal — {failureMessage}" — tidak lagi menampilkan SQL.
+- UI section "Detail Error" di Step 4: summary breakdown per kategori error di atas, lalu daftar kartu per-row dengan badge Row, NIP, Nama, label kategori, pesan utama, `detail`, dan `suggestion` (dengan icon Lightbulb).
+- Tombol "Download Laporan Error" menghasilkan CSV 9 kolom (Row, NIP, Nama, Kategori, Field, Nilai, Pesan, Detail, Saran) dengan BOM UTF-8 agar Excel membaca Bahasa Indonesia dengan benar.
+
 ### Known Issues
 - Vercel Hobby timeout 60s: import bulk harus via localhost
 - Button warning di console (nativeButton prop): non-blocking, shadcn/ui Base UI migration

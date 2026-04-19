@@ -172,11 +172,26 @@ export interface BatchExecuteRow {
   isExistingNip?: boolean;
 }
 
+export type ImportErrorCode =
+  | "DUPLICATE_NIK"
+  | "DUPLICATE_EMAIL"
+  | "DUPLICATE_NIP"
+  | "INVALID_FORMAT"
+  | "MISSING_FIELD"
+  | "INVALID_ENUM"
+  | "AUTH_ERROR"
+  | "UNKNOWN";
+
 export interface BatchError {
-  row: number;
-  field: string;
+  rowNumber: number;
+  nip: string;
+  namaLengkap: string;
+  errorCode: ImportErrorCode;
+  field: string | null;
+  value: string | null;
   message: string;
-  value: string;
+  detail?: string;
+  suggestion?: string;
 }
 
 export interface BatchExecutePayload {

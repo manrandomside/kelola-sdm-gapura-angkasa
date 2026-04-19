@@ -15,6 +15,7 @@ import {
   FileSpreadsheet,
   History,
   Info,
+  Lightbulb,
   Loader2,
   RotateCcw,
   Upload,
@@ -23,7 +24,6 @@ import {
   X,
   XCircle,
 } from "lucide-react";
-import * as XLSX from "xlsx";
 import { toast } from "@/lib/utils/toast";
 
 import { Pagination } from "@/components/shared/pagination";
@@ -55,8 +55,10 @@ import {
   useImportRollback,
   BATCH_SIZE,
   chunkArray,
+  type BatchError,
   type BatchExecuteResult,
 } from "@/hooks/use-import";
+import { getErrorLabel } from "@/lib/utils/parse-db-error";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ROUTES } from "@/lib/constants/routes";
 import { cn } from "@/lib/utils";
@@ -93,7 +95,8 @@ interface BatchLog {
   errors: number;
   newAccounts: number;
   duration: number;
-  errorMessages: string[];
+  errorDetails: BatchError[];
+  failureMessage: string | null;
 }
 
 const DB_FIELD_OPTIONS: { value: string; label: string }[] = [
@@ -306,6 +309,52 @@ function ConfidenceLabel({
   if (confidence === "fuzzy")
     return <span className="text-xs font-medium text-amber-600">Mirip</span>;
   return <span className="text-xs font-medium text-red-500">Belum</span>;
+}
+
+interface DuplicateInFileWarningProps {
+  kind: "NIP" | "NIK";
+  duplicates: { value: string; rows: number[] }[];
+}
+
+function DuplicateInFileWarning({
+  kind,
+  duplicates,
+}: DuplicateInFileWarningProps) {
+  const visible = duplicates.slice(0, 10);
+  const extra = duplicates.length - visible.length;
+  return (
+    <div className="flex gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+      <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-600" />
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold text-amber-900">
+          Ditemukan {duplicates.length.toLocaleString("id-ID")} {kind} Duplikat
+          di File
+        </p>
+        <p className="mt-0.5 text-sm text-amber-800">
+          File Anda mengandung {kind} yang sama di beberapa baris. Hanya baris
+          pertama yang akan di-import, sisanya akan di-skip atau error.
+        </p>
+        <details className="mt-2">
+          <summary className="cursor-pointer text-xs font-medium text-amber-900 underline">
+            Lihat detail
+          </summary>
+          <ul className="mt-2 space-y-1 text-xs text-amber-800">
+            {visible.map((d) => (
+              <li key={d.value}>
+                <span className="font-mono font-semibold">{kind} {d.value}</span>{" "}
+                muncul di baris: {d.rows.join(", ")}
+              </li>
+            ))}
+            {extra > 0 && (
+              <li className="italic">
+                ... dan {extra.toLocaleString("id-ID")} lainnya
+              </li>
+            )}
+          </ul>
+        </details>
+      </div>
+    </div>
+  );
 }
 
 function ActionBadge({ row }: { row: ImportPreviewRow }) {
@@ -586,7 +635,8 @@ export default function ImportPage() {
       errors: 0,
       newAccounts: 0,
       duration: 0,
-      errorMessages: [],
+      errorDetails: [],
+      failureMessage: null,
     }));
     setBatchLogs(initialLogs);
 
@@ -661,7 +711,8 @@ export default function ImportPage() {
                       status: "failed",
                       errors: batchSize,
                       duration,
-                      errorMessages: [errorMsg],
+                      errorDetails: [],
+                      failureMessage: errorMsg,
                     }
                   : l,
               ),
@@ -689,9 +740,8 @@ export default function ImportPage() {
                   errors: result!.batchErrors,
                   newAccounts: result!.newAccounts,
                   duration,
-                  errorMessages: result!.errors.map(
-                    (e) => `Row ${e.row}: ${e.message}`,
-                  ),
+                  errorDetails: result!.errors,
+                  failureMessage: null,
                 }
               : l,
           ),
@@ -730,21 +780,56 @@ export default function ImportPage() {
 
   // ---- Error Report ----
   function handleDownloadErrorReport() {
-    const logs = batchLogs.filter((l) => l.errorMessages.length > 0);
-    if (logs.length === 0) return;
-    const rows = logs.flatMap((batch) =>
-      batch.errorMessages.map((msg) => ({
-        Batch: batch.index + 1,
-        Error: msg,
-      })),
+    const allErrors = batchLogs.flatMap((l) => l.errorDetails);
+    if (allErrors.length === 0) return;
+
+    const headers = [
+      "Row",
+      "NIP",
+      "Nama Lengkap",
+      "Kategori Error",
+      "Field Bermasalah",
+      "Nilai",
+      "Pesan Error",
+      "Detail",
+      "Saran Perbaikan",
+    ];
+
+    const escape = (v: string | number | null | undefined): string => {
+      const s = v == null ? "" : String(v);
+      return `"${s.replace(/"/g, '""')}"`;
+    };
+
+    const rows = allErrors.map((e) =>
+      [
+        e.rowNumber,
+        e.nip,
+        e.namaLengkap,
+        getErrorLabel(e.errorCode),
+        e.field ?? "-",
+        e.value ?? "-",
+        e.message,
+        e.detail ?? "-",
+        e.suggestion ?? "-",
+      ]
+        .map(escape)
+        .join(","),
     );
-    const sheet = XLSX.utils.json_to_sheet(rows);
-    sheet["!cols"] = [{ wch: 10 }, { wch: 80 }];
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, sheet, "Error Import");
+
+    const csvContent = [headers.map(escape).join(","), ...rows].join("\n");
+    const blob = new Blob(["\ufeff" + csvContent], {
+      type: "text/csv;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
     const d = new Date();
     const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    XLSX.writeFile(workbook, `Error_Import_${dateStr}.xlsx`);
+    link.download = `import-errors-${dateStr}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   }
 
   // ---- Row expand ----
@@ -772,7 +857,17 @@ export default function ImportPage() {
       batchLogs.length > 0
         ? Math.round((completedBatches / batchLogs.length) * 100)
         : 0;
-    const hasAnyErrors = batchLogs.some((l) => l.errorMessages.length > 0);
+    const allErrors = batchLogs.flatMap((l) => l.errorDetails);
+    const hasAnyErrors = allErrors.length > 0;
+
+    const errorSummary = Object.entries(
+      allErrors.reduce<Record<string, number>>((acc, e) => {
+        acc[e.errorCode] = (acc[e.errorCode] ?? 0) + 1;
+        return acc;
+      }, {}),
+    )
+      .map(([code, count]) => ({ code, count, label: getErrorLabel(code) }))
+      .sort((a, b) => b.count - a.count);
 
     return (
       <div className="space-y-6">
@@ -837,41 +932,44 @@ export default function ImportPage() {
               <div className="max-h-[300px] space-y-1.5 overflow-y-auto p-3">
                 {batchLogs.map((log) => (
                   <div key={log.index} className="text-xs sm:text-sm">
-                    {log.status === "completed" && (
+                    {log.status === "completed" && log.errors === 0 && (
                       <div className="flex items-start gap-2">
                         <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-green-600" />
-                        <span className="text-muted-foreground">
-                          Batch {log.index + 1}: {log.success} berhasil
-                          {log.errors > 0 ? `, ${log.errors} gagal` : ""} (
-                          {formatDurationMs(log.duration)})
-                        </span>
+                        <div>
+                          <span className="font-medium text-green-700">
+                            Batch {log.index + 1}: {log.success} berhasil
+                          </span>
+                          <p className="text-xs text-muted-foreground">
+                            ({formatDurationMs(log.duration)})
+                          </p>
+                        </div>
                       </div>
                     )}
-                    {log.status === "completed" &&
-                      log.errorMessages.length > 0 &&
-                      log.errorMessages.map((msg, mi) => (
-                        <p
-                          key={`${log.index}-e-${mi}`}
-                          className="ml-5 text-xs text-red-600"
-                        >
-                          {msg}
-                        </p>
-                      ))}
+                    {log.status === "completed" && log.errors > 0 && (
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-amber-500" />
+                        <div>
+                          <span className="font-medium text-amber-700">
+                            Batch {log.index + 1}: {log.success} berhasil,{" "}
+                            {log.errors} gagal
+                          </span>
+                          <p className="text-xs text-muted-foreground">
+                            ({formatDurationMs(log.duration)})
+                          </p>
+                        </div>
+                      </div>
+                    )}
                     {log.status === "failed" && (
                       <div className="flex items-start gap-2">
                         <XCircle className="mt-0.5 size-3.5 shrink-0 text-red-500" />
                         <div>
-                          <span className="text-red-700">
+                          <span className="font-medium text-red-700">
                             Batch {log.index + 1}: Gagal
                           </span>
-                          {log.errorMessages.map((msg, mi) => (
-                            <p
-                              key={`${log.index}-f-${mi}`}
-                              className="text-xs text-red-600"
-                            >
-                              {msg}
-                            </p>
-                          ))}
+                          <p className="mt-0.5 text-xs text-red-600">
+                            {log.failureMessage ??
+                              "Terjadi kesalahan saat memproses batch ini"}
+                          </p>
                         </div>
                       </div>
                     )}
@@ -985,33 +1083,105 @@ export default function ImportPage() {
                 ref={errorSectionRef}
                 className="overflow-hidden rounded-xl border border-border bg-card"
               >
-                <div className="flex items-center justify-between border-b border-border bg-muted/30 px-4 py-3">
-                  <h2 className="text-sm font-semibold text-foreground">
-                    Detail Error
-                  </h2>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleDownloadErrorReport}
-                  >
-                    <Download className="size-4" />
-                    <span className="hidden sm:inline">Download</span>
-                  </Button>
+                <div className="flex flex-col gap-2 border-b border-border bg-muted/30 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h2 className="text-sm font-semibold text-foreground">
+                      Detail Error ({allErrors.length.toLocaleString("id-ID")}{" "}
+                      row gagal)
+                    </h2>
+                    <p className="text-xs text-muted-foreground">
+                      Daftar karyawan yang gagal di-import beserta alasannya.
+                    </p>
+                  </div>
+                  {allErrors.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleDownloadErrorReport}
+                    >
+                      <Download className="size-4" />
+                      Download Laporan Error
+                    </Button>
+                  )}
                 </div>
-                <div className="max-h-[400px] space-y-1 overflow-auto p-3">
-                  {batchLogs
-                    .filter((l) => l.errorMessages.length > 0)
-                    .flatMap((l) =>
-                      l.errorMessages.map((msg, i) => (
-                        <p
-                          key={`${l.index}-${i}`}
-                          className="text-sm text-red-700"
-                        >
-                          {msg}
+
+                {errorSummary.length > 0 && (
+                  <div className="grid grid-cols-2 gap-2 border-b border-border bg-muted/10 px-4 py-3 sm:grid-cols-4">
+                    {errorSummary.map((summary) => (
+                      <div
+                        key={summary.code}
+                        className="rounded-lg border border-red-200 bg-red-50 px-3 py-2"
+                      >
+                        <p className="text-[11px] font-medium text-red-700">
+                          {summary.label}
                         </p>
-                      )),
-                    )}
-                </div>
+                        <p className="mt-0.5 text-xl font-bold tabular-nums text-red-900">
+                          {summary.count.toLocaleString("id-ID")}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {allErrors.length > 0 ? (
+                  <div className="max-h-[500px] space-y-2 overflow-y-auto p-3">
+                    {allErrors.map((err, idx) => (
+                      <div
+                        key={`${err.rowNumber}-${idx}`}
+                        className="rounded-lg border border-red-200 bg-red-50/50 p-3"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="mb-1 flex flex-wrap items-center gap-2">
+                            <span className="rounded border border-red-200 bg-white px-1.5 py-0.5 text-[10px] font-semibold uppercase text-red-700">
+                              Row {err.rowNumber}
+                            </span>
+                            <span className="font-mono text-xs text-gray-600 sm:text-sm">
+                              {err.nip}
+                            </span>
+                            <span className="truncate text-xs font-medium text-gray-900 sm:text-sm">
+                              {err.namaLengkap}
+                            </span>
+                            <span className="rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-red-700">
+                              {getErrorLabel(err.errorCode)}
+                            </span>
+                          </div>
+                          <p className="text-sm font-medium text-red-900">
+                            {err.message}
+                          </p>
+                          {err.detail && (
+                            <p className="mt-1 text-xs text-red-700">
+                              {err.detail}
+                            </p>
+                          )}
+                          {err.suggestion && (
+                            <p className="mt-1 flex items-start gap-1 text-xs text-blue-700">
+                              <Lightbulb className="mt-0.5 size-3 shrink-0" />
+                              <span>{err.suggestion}</span>
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-3 p-4">
+                    {batchLogs
+                      .filter((l) => l.failureMessage)
+                      .map((l) => (
+                        <div
+                          key={`fail-${l.index}`}
+                          className="rounded-lg border border-red-200 bg-red-50/50 p-3"
+                        >
+                          <p className="text-sm font-semibold text-red-900">
+                            Batch {l.index + 1}: Gagal
+                          </p>
+                          <p className="mt-1 text-xs text-red-700">
+                            {l.failureMessage}
+                          </p>
+                        </div>
+                      ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -1023,23 +1193,39 @@ export default function ImportPage() {
                 </p>
               </div>
               <div className="max-h-[300px] space-y-1.5 overflow-y-auto p-3">
-                {batchLogs.map((log) => (
-                  <div
-                    key={log.index}
-                    className="flex items-start gap-2 text-sm"
-                  >
-                    {log.status === "completed" ? (
-                      <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-green-600" />
-                    ) : (
-                      <XCircle className="mt-0.5 size-3.5 shrink-0 text-red-500" />
-                    )}
-                    <span className="text-muted-foreground">
-                      Batch {log.index + 1}: {log.success} berhasil
-                      {log.errors > 0 ? `, ${log.errors} gagal` : ""} (
-                      {formatDurationMs(log.duration)})
-                    </span>
-                  </div>
-                ))}
+                {batchLogs.map((log) => {
+                  const isSuccess = log.status === "completed" && log.errors === 0;
+                  const isPartial = log.status === "completed" && log.errors > 0;
+                  return (
+                    <div
+                      key={log.index}
+                      className="flex items-start gap-2 text-sm"
+                    >
+                      {isSuccess && (
+                        <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-green-600" />
+                      )}
+                      {isPartial && (
+                        <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-amber-500" />
+                      )}
+                      {log.status === "failed" && (
+                        <XCircle className="mt-0.5 size-3.5 shrink-0 text-red-500" />
+                      )}
+                      <span
+                        className={cn(
+                          isSuccess && "text-green-700",
+                          isPartial && "text-amber-700",
+                          log.status === "failed" && "text-red-700",
+                        )}
+                      >
+                        Batch {log.index + 1}:{" "}
+                        {log.status === "failed"
+                          ? "Gagal"
+                          : `${log.success} berhasil${log.errors > 0 ? `, ${log.errors} gagal` : ""}`}{" "}
+                        ({formatDurationMs(log.duration)})
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </>
@@ -1121,6 +1307,22 @@ export default function ImportPage() {
             tone="emerald"
           />
         </div>
+
+        {/* Warnings: duplicate NIP/NIK in file */}
+        {preview.warnings?.duplicateNipInFile &&
+          preview.warnings.duplicateNipInFile.length > 0 && (
+            <DuplicateInFileWarning
+              kind="NIP"
+              duplicates={preview.warnings.duplicateNipInFile}
+            />
+          )}
+        {preview.warnings?.duplicateNikInFile &&
+          preview.warnings.duplicateNikInFile.length > 0 && (
+            <DuplicateInFileWarning
+              kind="NIK"
+              duplicates={preview.warnings.duplicateNikInFile}
+            />
+          )}
 
         {/* Filter tabs */}
         <Tabs

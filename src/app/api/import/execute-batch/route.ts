@@ -8,9 +8,11 @@ import { KODE_ORGANISASI_MAP, STATUS_KONTRAK_TO_PEGAWAI } from "@/lib/constants/
 import { getProviderFilter, getSessionUser } from "@/lib/utils/auth";
 import { createUserAccount } from "@/lib/utils/create-user-account";
 import { logger } from "@/lib/utils/logger";
+import { parseDatabaseError } from "@/lib/utils/parse-db-error";
 
 import type { ApiResponse } from "@/types/api";
 import type { NormalizedRow } from "@/lib/utils/excel";
+import type { DatabaseErrorCode } from "@/lib/utils/parse-db-error";
 
 export const maxDuration = 30;
 export const dynamic = "force-dynamic";
@@ -32,10 +34,15 @@ interface ExecuteBatchRequestBody {
 }
 
 interface BatchError {
-  row: number;
-  field: string;
+  rowNumber: number;
+  nip: string;
+  namaLengkap: string;
+  errorCode: DatabaseErrorCode;
+  field: string | null;
+  value: string | null;
   message: string;
-  value: string;
+  detail?: string;
+  suggestion?: string;
 }
 
 interface ExecuteBatchResponseData {
@@ -374,10 +381,15 @@ export async function POST(
     const row = body.rows[i];
     if (!row || !row.data) {
       errors.push({
-        row: row?.rowNumber ?? i + 1,
-        field: "",
+        rowNumber: row?.rowNumber ?? i + 1,
+        nip: "-",
+        namaLengkap: "-",
+        errorCode: "UNKNOWN",
+        field: null,
+        value: null,
         message: "Struktur row tidak valid",
-        value: "",
+        detail: "Row tidak memiliki data yang dapat diproses.",
+        suggestion: "Periksa format file dan coba lagi.",
       });
       continue;
     }
@@ -387,11 +399,17 @@ export async function POST(
     const namaLengkap = data.nama_lengkap;
 
     if (!nip || !namaLengkap) {
+      const missingField = !nip ? "nip" : "nama_lengkap";
       errors.push({
-        row: row.rowNumber,
-        field: !nip ? "nip" : "nama_lengkap",
-        message: "NIP dan Nama Lengkap wajib diisi",
-        value: "",
+        rowNumber: row.rowNumber,
+        nip: nip ?? "-",
+        namaLengkap: namaLengkap ?? "-",
+        errorCode: "MISSING_FIELD",
+        field: missingField,
+        value: null,
+        message: `Field wajib "${missingField}" kosong`,
+        detail: "NIP dan Nama Lengkap wajib diisi untuk setiap karyawan.",
+        suggestion: `Isi field ${missingField} di file sumber.`,
       });
       continue;
     }
@@ -458,11 +476,17 @@ export async function POST(
       }
     } catch (err) {
       logger.error(`Failed to import row ${row.rowNumber} (NIP ${nip})`, err);
+      const parsed = parseDatabaseError(err, data as unknown as Record<string, unknown>);
       errors.push({
-        row: row.rowNumber,
-        field: "",
-        message: extractErrorMessage(err),
-        value: nip,
+        rowNumber: row.rowNumber,
+        nip: nip,
+        namaLengkap: namaLengkap,
+        errorCode: parsed.code,
+        field: parsed.field ?? null,
+        value: parsed.value ?? null,
+        message: parsed.message,
+        detail: parsed.detail,
+        suggestion: parsed.suggestion,
       });
     }
   }

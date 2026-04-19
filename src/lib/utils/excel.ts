@@ -150,6 +150,16 @@ export interface DetectedColumn {
   confidence: "exact" | "fuzzy" | "unmapped";
 }
 
+export interface DuplicateInFile {
+  value: string;
+  rows: number[];
+}
+
+export interface ImportWarnings {
+  duplicateNipInFile: DuplicateInFile[];
+  duplicateNikInFile: DuplicateInFile[];
+}
+
 export interface EnhancedImportPreviewResult extends ImportPreviewResult {
   duplicateNips: DuplicateNipInfo[];
   newNips: NewNipInfo[];
@@ -157,6 +167,7 @@ export interface EnhancedImportPreviewResult extends ImportPreviewResult {
   newCount: number;
   enhancedRows: EnhancedPreviewRow[];
   detectedColumns: DetectedColumn[];
+  warnings: ImportWarnings;
 }
 
 // ============================================================================
