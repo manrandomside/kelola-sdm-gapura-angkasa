@@ -2,7 +2,14 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Info, Plus, ShieldCheck, UserCheck, UserX, Users2 } from "lucide-react";
+import {
+  Info,
+  Plus,
+  ShieldCheck,
+  UserCheck,
+  UserX,
+  Users2,
+} from "lucide-react";
 
 import { Pagination } from "@/components/shared/pagination";
 import { SearchInput } from "@/components/shared/search-input";
@@ -65,7 +72,13 @@ interface StatCardProps {
   isLoading: boolean;
 }
 
-function StatCard({ label, value, icon, accentClass, isLoading }: StatCardProps) {
+function StatCard({
+  label,
+  value,
+  icon,
+  accentClass,
+  isLoading,
+}: StatCardProps) {
   return (
     <div className="rounded-xl border border-border bg-card p-4">
       <div className="flex items-start justify-between gap-3">
@@ -105,8 +118,9 @@ export default function UsersPage() {
     null,
   );
   const [resetTarget, setResetTarget] = useState<UserListItem | null>(null);
-  const [deactivateTarget, setDeactivateTarget] =
-    useState<UserListItem | null>(null);
+  const [deactivateTarget, setDeactivateTarget] = useState<UserListItem | null>(
+    null,
+  );
 
   const query = useUsers({
     page,
@@ -235,7 +249,9 @@ export default function UsersPage() {
       <div className="flex gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
         <Info className="mt-0.5 size-5 shrink-0 text-blue-600" />
         <p className="text-sm text-blue-700">
-          Akun dibuat otomatis saat import data karyawan. Password default = NIP.
+          Akun akan dibuat secara otomatis ketika Anda melakukan import data
+          karyawan atau menambahkan data karyawan baru secara manual. Password
+          default = NIP.
         </p>
       </div>
 
