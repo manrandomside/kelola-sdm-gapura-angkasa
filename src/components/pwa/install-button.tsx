@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { Download, Smartphone } from "lucide-react";
 
+import { cn } from "@/lib/utils";
+
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
   readonly userChoice: Promise<{
@@ -14,7 +16,17 @@ interface BeforeInstallPromptEvent extends Event {
 
 type Platform = "ios" | "android" | "desktop";
 
-export function InstallButton() {
+type Variant = "default" | "outline";
+
+interface InstallButtonProps {
+  variant?: Variant;
+  className?: string;
+}
+
+export function InstallButton({
+  variant = "default",
+  className,
+}: InstallButtonProps = {}) {
   const [deferredPrompt, setDeferredPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
@@ -65,19 +77,32 @@ export function InstallButton() {
 
   if (isInstalled) {
     return (
-      <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+      <div
+        className={cn(
+          "flex items-center justify-center gap-2 text-sm",
+          variant === "outline" ? "text-white/90" : "text-muted-foreground",
+        )}
+      >
         <Smartphone className="size-4" />
         Aplikasi sudah ter-install di perangkat Anda
       </div>
     );
   }
 
+  const buttonClass =
+    variant === "outline"
+      ? "inline-flex items-center justify-center gap-2 rounded-xl border-2 border-white bg-white/10 px-8 h-12 text-base font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/20"
+      : "inline-flex items-center justify-center gap-2 rounded-xl border-2 border-primary px-6 py-3 text-sm font-semibold text-primary transition-colors hover:bg-primary hover:text-white";
+
   return (
-    <div className="flex flex-col items-center gap-3">
-      <button
-        onClick={handleInstall}
-        className="inline-flex items-center gap-2 rounded-xl border-2 border-primary px-6 py-3 text-sm font-semibold text-primary transition-colors hover:bg-primary hover:text-white"
-      >
+    <div
+      className={cn(
+        "flex flex-col gap-3",
+        variant === "outline" ? "items-stretch sm:items-start" : "items-center",
+        className,
+      )}
+    >
+      <button onClick={handleInstall} className={buttonClass}>
         <Download className="size-5" />
         Install Aplikasi
       </button>

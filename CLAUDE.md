@@ -591,6 +591,23 @@ src/
 - UI section "Detail Error" di Step 4: summary breakdown per kategori error di atas, lalu daftar kartu per-row dengan badge Row, NIP, Nama, label kategori, pesan utama, `detail`, dan `suggestion` (dengan icon Lightbulb).
 - Tombol "Download Laporan Error" menghasilkan CSV 9 kolom (Row, NIP, Nama, Kategori, Field, Nilai, Pesan, Detail, Saran) dengan BOM UTF-8 agar Excel membaca Bahasa Indonesia dengan benar.
 
+### Landing Page Total Redesign (2026-04-29)
+- Halaman `/` (`src/app/page.tsx`) di-rewrite total: 7 section profesional + Navbar + Footer
+- Section flow: Hero (carousel) -> Tentang Sistem -> Statistik -> Fitur Lengkap -> Alur Kerja -> Tech Highlight -> CTA -> Footer
+- Hero: full-bleed `embla-carousel-react` dengan 5 gambar (`public/images/hero/*.jpeg`), autoplay 5s, loop, pause-on-hover via `embla-carousel-autoplay`. Tombol prev/next (md:flex), dot indicator (semua device), gradient hijau + black/40 overlay untuk legibility.
+- Komponen baru:
+  - `src/components/landing/hero-carousel.tsx` — Embla + Autoplay, Next/Image dengan `fill`+`sizes="100vw"`+`priority` slide pertama, quality=85
+  - `src/components/landing/animated-counter.tsx` — counter 0 -> end via `requestAnimationFrame` + easeOutCubic, trigger via `useInView({ once: true })`
+- Statistik: 4 stat card (1000+ Karyawan, 10 Provider, 7 Chart, 3 Laporan PDF) dengan animated counter
+- Fitur: 8 card (Manajemen Karyawan, Import/Export, Dashboard Analitik, Monitoring Kontrak, Multi-Provider, Asisten AI, Laporan PDF, PWA Installable) — grid 1/2/4
+- Workflow: 4 langkah dengan ghost number besar, ikon hijau di dalam circle, garis penghubung putus-putus (horizontal di desktop, vertical di mobile)
+- Tech badges: 6 stack (Next.js 15, React 19, TypeScript, PostgreSQL, Tailwind CSS, Vercel) — grid 2x3
+- CTA Section: gradient hijau dengan tombol "Masuk ke Sistem" + Install Button outline white
+- Animasi: `framer-motion` `fadeInUp` + `staggerContainer` via `whileInView`, scroll reveal di setiap section non-hero
+- Navbar: fixed h-[72px], transparan saat top, solid white + backdrop-blur saat scrolled. Logo + tombol "Masuk ke Sistem" dengan gaya yang berubah berdasarkan scroll state.
+- `InstallButton` (`src/components/pwa/install-button.tsx`): tambah prop `variant?: "default" | "outline"`. Variant `outline` styling: `bg-white/10 backdrop-blur-sm border-2 border-white text-white hover:bg-white/20` untuk dipakai di hero/CTA dengan background gelap.
+- Dependency baru: `embla-carousel-react`, `embla-carousel-autoplay`
+
 ### Known Issues
 - Vercel Hobby timeout 60s: import bulk harus via localhost
 - Button warning di console (nativeButton prop): non-blocking, shadcn/ui Base UI migration
